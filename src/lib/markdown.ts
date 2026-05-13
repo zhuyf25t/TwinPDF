@@ -2,6 +2,7 @@ import type { StudyLogEntry } from "../shared/contracts";
 
 type SubhandoutOptions = {
   title?: string;
+  courseTitle?: string;
   workspaceName?: string;
   generatedReviewMarkdown?: string;
   createdAt?: Date;
@@ -92,7 +93,8 @@ export function buildPersonalSubhandoutMarkdown(entries: StudyLogEntry[], option
 
 export function buildFinalSummaryMarkdown(options: SubhandoutOptions & { courseTitle: string; entries: StudyLogEntry[] }) {
   return buildSubhandoutMarkdown(options.entries, {
-    title: `个人子讲义：${options.courseTitle || "本次课程"}`,
+    title: "本节个人子讲义",
+    courseTitle: options.courseTitle || "本次课程",
     workspaceName: options.workspaceName,
     generatedReviewMarkdown: options.generatedReviewMarkdown,
     createdAt: options.createdAt
@@ -111,8 +113,12 @@ function buildSubhandoutMarkdown(entries: StudyLogEntry[], options: Required<Pic
   const sortedEntries = [...entries].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const formulaEntries = sortedEntries.filter(isFormulaOrDefinitionEntry);
   const createdAt = options.createdAt || new Date();
-  const lines = [`# ${options.title}`, "", `生成时间：${formatDateTime(createdAt)}`];
-  if (options.workspaceName) lines.push(`工作区：${options.workspaceName}`);
+  const courseName = options.courseTitle || sortedEntries[0]?.courseTitle || options.title;
+  const pageRefs = [...new Set(sortedEntries.map(pageRef).filter(Boolean))];
+  const lines = [`# ${options.title}`, "", "## 课程与文件信息", "", `- 课程：${courseName}`, `- 生成时间：${formatDateTime(createdAt)}`];
+  if (options.workspaceName) lines.push(`- 工作区：${options.workspaceName}`);
+  if (sortedEntries.length) lines.push(`- 已沉淀问答：${sortedEntries.length} 条`);
+  if (pageRefs.length) lines.push(`- 涉及页码：${pageRefs.join("、")}`);
   lines.push("", "## 本节核心问题");
 
   if (!sortedEntries.length) {
@@ -138,7 +144,7 @@ function buildSubhandoutMarkdown(entries: StudyLogEntry[], options: Required<Pic
     lines.push("");
   }
 
-  lines.push("## 易错概念", "");
+  lines.push("## 易错点", "");
   if (!sortedEntries.length) {
     lines.push("暂无。", "");
   } else {
@@ -175,6 +181,18 @@ function buildSubhandoutMarkdown(entries: StudyLogEntry[], options: Required<Pic
   } else {
     for (const entry of sortedEntries) {
       lines.push(`- [ ] 能不用原答案复述：${oneLine(entry.question || "这段内容是什么意思？")}`);
+    }
+    lines.push("");
+  }
+
+  lines.push("## 仍需回看页码", "");
+  if (!pageRefs.length) {
+    lines.push("暂无。", "");
+  } else {
+    for (const ref of pageRefs) {
+      const related = sortedEntries.filter((entry) => pageRef(entry) === ref);
+      const questions = related.map((entry) => oneLine(entry.question)).filter(Boolean).slice(0, 3).join("；");
+      lines.push(`- ${ref}${questions ? `：${questions}` : ""}`);
     }
     lines.push("");
   }
@@ -257,13 +275,14 @@ function isFormulaOrDefinitionEntry(entry: StudyLogEntry) {
 
 function hasFinalSections(markdown: string) {
   return [
+    "# 本节个人子讲义",
+    "## 课程与文件信息",
     "## 本节核心问题",
     "## 我问过的问题",
-    "## 易错概念",
     "## 句子级解释",
-    "## 公式与定义",
+    "## 易错点",
     "## 考前复习清单",
-    "## 原始问答日志"
+    "## 仍需回看页码"
   ].every((section) => markdown.includes(section));
 }
 

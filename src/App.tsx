@@ -213,7 +213,7 @@ export default function App() {
         <button className="finalize-button" onClick={() => void finalizeCourse()}>结束课程总结</button>
       </header>
 
-      <main className="workspace" style={{ paddingBottom: settings.assistantHeight + 28 }}>
+      <main className="workspace">
         <PdfPane
           onSelectionChange={setSelected}
           onPdfFileLoaded={(file) => void handlePdfFileLoaded(file)}
@@ -221,6 +221,7 @@ export default function App() {
         />
         <HandoutPane
           markdown={handoutMarkdown}
+          fileName={workspaceData.settings.lastRightHandoutName}
           onChange={(markdown) => setWorkspaceData({ ...workspaceData, handoutMarkdown: markdown })}
           onOpenFile={(file) => void handleRightFile(file)}
         />
@@ -235,7 +236,6 @@ export default function App() {
         settings={settings}
         onSettingsChange={updateSettings}
         onAddEntry={addStudyLogEntry}
-        onFinalize={() => void finalizeCourse()}
       />
 
       <FinalSummaryModal

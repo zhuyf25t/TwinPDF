@@ -39,3 +39,14 @@ Next Codex run must execute `docs/CODEX_GOAL_PROMPT.md`, install deps, run typec
   - `lec08_vm_malloc_super_detailed_guide.pdf`: 102 pages, 102 text pages, 1702 sentence units.
 - Browser smoke passed in mock mode at `http://localhost:9999`: chose workspace, loaded left PDF, loaded right PDF guide, selected PDF text, translation surface updated, AI answered, input lock worked, sublecture lock worked, manual add worked, `加入成功` appeared, final summary saved to workspace stub.
 - Final verification passed: `npm run typecheck`, `npm run build`, `npm run test`, and `npm run smoke:real-pdf`.
+
+## UI craft hardening completion - 2026-05-14
+- Re-read `AGENTS.md`, the whitepaper, UX workflow, AI Assist spec, final checklist, and `docs/vision/` wireframes, then re-centered the product on the warm symmetric study craft direction.
+- Replaced the old blue/white demo styling with layered warm design tokens and split style files under `src/styles/`: `tokens`, `global`, `workspace`, `pdf`, `handout`, `assistant`, and `summary`.
+- Stabilized the desktop workspace as two equal independently scrolling reading panes, with compact headers, ivory surfaces, restrained warm-brown controls, ellipsized long file names, and no browser-level layout scroll.
+- Refined the PDF pane into a calmer reader: narrow thumbnail rail with skeleton placeholders, 60% default fit for the real lecture slide, centered white page on warm desk background, and an explicit `选择文本` tool state.
+- Refined the right handout pane into a Markdown-like Chinese reading surface and changed imported PDF handout output so long PDF file names no longer become huge overflowing H1 titles.
+- Rebuilt the AI Assist dock structure around selected text, browser translation, AI answer, input locks, manual/auto add, green `加入成功`, collapsed state, and drag height persistence without clearing old answers on selection change.
+- Hardened the Playwright smoke test with screenshot capture, realistic multi-span PDF selection, dock viewport/width/height assertions, internal non-overlap checks, mobile dock screenshot, required final-summary heading checks, and workspace artifact assertions.
+- Final screenshots were written to `F:\tmp\twinpdf-final-ui`; real PDF smoke passed with the two lec8 PDFs and selected text `Lecture 8 Virtual Memory & Memory Management Mingyu Gao gaomy@tsinghua.edu.cn`.
+- Final verification after this UI pass passed: `npm run typecheck`, `npm run test`, `npm run build`, and `SMOKE_SCREENSHOT_DIR=F:\tmp\twinpdf-final-ui npm run smoke:real-pdf`.

@@ -11,11 +11,12 @@ type AssistantDockProps = {
   settings: AppSettings;
   onSettingsChange: (settings: AppSettings) => void;
   onAddEntry: (entry: StudyLogEntry) => Promise<void> | void;
-  onFinalize: () => void;
 };
 
 type AnswerSnapshot = {
   id: string;
+  fingerprint: string;
+  selectionSignature: string;
   text: string;
   question: string;
   mode: AssistMode;
@@ -36,9 +37,9 @@ const modeLabels: Record<AssistMode, string> = {
   question: "追问"
 };
 
-const EMPTY_SELECTION = "在左侧英文 PDF 中选中一句话或一段文字，这里会立即更新。";
-const EMPTY_TRANSLATION = "选中英文后，这里会变成可被浏览器翻译的普通网页文本。";
-const EMPTY_ANSWER = "选中文本后，可以点“解释 / 翻译 / 举例”，也可以在下面直接追问。";
+const emptySelection = "在左侧英文 PDF 中选中一句话或一段文字，这里会立即更新。";
+const emptyTranslation = "这里是普通网页文本，可直接被浏览器翻译。";
+const emptyAnswer = "点击解释，或在下方输入你的问题。";
 
 function defaultQuestionForMode(mode: AssistMode) {
   if (mode === "translate") return "请解释这段英文的准确含义，并保留关键术语。";
@@ -52,7 +53,8 @@ function makeQuestion(mode: AssistMode, question: string) {
 }
 
 function clampDockHeight(height: number) {
-  return Math.max(260, Math.min(620, Number.isFinite(height) ? height : 320));
+  const viewportMax = typeof window === "undefined" ? 540 : Math.floor(window.innerHeight * 0.55);
+  return Math.max(280, Math.min(viewportMax, Number.isFinite(height) ? height : 340));
 }
 
 function friendlyError(error: unknown, action: string) {
@@ -63,6 +65,10 @@ function friendlyError(error: unknown, action: string) {
   return `${action}没有完成：${message}`;
 }
 
+function makeFingerprint(selectedText: string, question: string, answer: string) {
+  return [selectedText.trim(), question.trim(), answer.trim()].join("\u001e");
+}
+
 export function AssistantDock({
   courseTitle,
   workspaceName,
@@ -71,8 +77,7 @@ export function AssistantDock({
   recentEntries,
   settings,
   onSettingsChange,
-  onAddEntry,
-  onFinalize
+  onAddEntry
 }: AssistantDockProps) {
   const [mode, setMode] = useState<AssistMode>("explain");
   const [question, setQuestion] = useState("");
@@ -81,18 +86,17 @@ export function AssistantDock({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
-  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
+  const [lastAddedFingerprint, setLastAddedFingerprint] = useState<string | null>(null);
   const dragState = useRef<{ startY: number; startHeight: number } | null>(null);
   const questionRef = useRef(question);
   const editVersionRef = useRef(0);
 
   const rawSelectedText = selected.selectedText || "";
   const hasSelection = rawSelectedText.trim().length > 0;
-  const selectedText = hasSelection ? rawSelectedText : EMPTY_SELECTION;
+  const selectedText = hasSelection ? rawSelectedText : emptySelection;
   const translationSurface = hasSelection ? rawSelectedText : "";
   const pageContext = selected.nearbyContext || selected.pageText || "";
-  const addSuccess = Boolean(answerState && lastAddedId === answerState.id);
-  const height = collapsed ? 52 : clampDockHeight(settings.assistantHeight);
+  const height = collapsed ? 44 : clampDockHeight(settings.assistantHeight);
 
   const selectionSignature = useMemo(() => [
     rawSelectedText,
@@ -102,10 +106,15 @@ export function AssistantDock({
     selected.source
   ].join("\u001f"), [rawSelectedText, selected.pageLabel, selected.pageNumber, selected.sentenceId, selected.source]);
 
+  const currentAnswerIsFresh = Boolean(answerState && answerState.selectionSignature === selectionSignature);
+  const alreadyAdded = Boolean(answerState && (
+    lastAddedFingerprint === answerState.fingerprint
+    || recentEntries.some((entry) => makeFingerprint(entry.selectedText, entry.question, entry.answer) === answerState.fingerprint)
+  ));
+
   useEffect(() => {
-    setAnswerState(null);
-    setLastAddedId(null);
     setError(null);
+    setLastAddedFingerprint(null);
   }, [selectionSignature]);
 
   useEffect(() => {
@@ -121,15 +130,19 @@ export function AssistantDock({
     editVersionRef.current += 1;
     questionRef.current = value;
     setQuestion(value);
+    setLastAddedFingerprint(null);
   }
 
   function buildSnapshot(id: string, text: string, submittedQuestion: string, submittedMode: AssistMode): AnswerSnapshot {
+    const selectedForEntry = hasSelection ? rawSelectedText : "";
     return {
       id,
+      fingerprint: makeFingerprint(selectedForEntry, submittedQuestion, text),
+      selectionSignature,
       text,
       question: submittedQuestion,
       mode: submittedMode,
-      selectedText: hasSelection ? rawSelectedText : "",
+      selectedText: selectedForEntry,
       translationSurface,
       pageContext,
       rightNoteContext,
@@ -141,6 +154,11 @@ export function AssistantDock({
   }
 
   async function persistEntry(snapshot: AnswerSnapshot) {
+    if (recentEntries.some((entry) => makeFingerprint(entry.selectedText, entry.question, entry.answer) === snapshot.fingerprint)) {
+      setLastAddedFingerprint(snapshot.fingerprint);
+      return;
+    }
+
     const entry: StudyLogEntry = {
       id: snapshot.id,
       createdAt: new Date().toISOString(),
@@ -159,7 +177,7 @@ export function AssistantDock({
       sentenceId: snapshot.sentenceId
     };
     await onAddEntry(entry);
-    setLastAddedId(snapshot.id);
+    setLastAddedFingerprint(snapshot.fingerprint);
   }
 
   function clearQuestionAfterSuccess(inputAtSubmit: string, editVersionAtSubmit: number) {
@@ -177,7 +195,7 @@ export function AssistantDock({
     setMode(nextMode);
     setLoading(true);
     setError(null);
-    setLastAddedId(null);
+    setLastAddedFingerprint(null);
 
     try {
       const result = await requestAssist({
@@ -256,6 +274,13 @@ export function AssistantDock({
     }
   }
 
+  function copyText(text: string) {
+    if (!text.trim()) return;
+    void navigator.clipboard.writeText(text);
+  }
+
+  const selectedStatus = hasSelection ? `${selected.pageLabel || "当前页"} · 已选中` : "等待选中英文";
+
   return (
     <aside className={`assistant-dock ${collapsed ? "collapsed" : ""}`} style={{ height }}>
       <div
@@ -267,19 +292,15 @@ export function AssistantDock({
         onPointerCancel={handlePointerEnd}
       />
       <div className="assistant-header">
-        <strong>AI Assist · 随堂助手</strong>
-        <div className="assistant-locks">
-          <button className={`tiny-lock ${settings.inputLocked ? "active" : ""}`} onClick={() => patchSettings({ inputLocked: !settings.inputLocked })} title="锁住输入：同一个问题可以连续问不同选区">
-            {settings.inputLocked ? "🔒 输入锁定" : "🔓 输入不锁"}
-          </button>
-          <button className={`tiny-lock ${settings.autoAddLocked ? "active" : ""}`} onClick={() => patchSettings({ autoAddLocked: !settings.autoAddLocked })} title="锁住子讲义：成功回答后自动加入个人子讲义">
-            {settings.autoAddLocked ? "🔒 自动加入" : "🔓 手动加入"}
-          </button>
-          {addSuccess && <span className="success-pill">加入成功</span>}
+        <div className="assistant-title">
+          <strong>AI Assist</strong>
+          <span>随堂助手</span>
+          <em>{selectedStatus}</em>
+        </div>
+        <div className="assistant-header-actions">
           <button className="icon-button" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? "展开 AI Assist" : "收起 AI Assist"}>
-            {collapsed ? "⌃" : "⌄"}
+            {collapsed ? "展开" : "收起"}
           </button>
-          <button className="course-summary-mini" onClick={onFinalize}>结束课程总结</button>
         </div>
       </div>
 
@@ -296,40 +317,49 @@ export function AssistantDock({
                 {modeLabels[item]}
               </button>
             ))}
-            <button className="mode-chip save-chip" onClick={() => void addCurrentAnswer()} disabled={!answerState || loading || saving || addSuccess}>
-              {saving ? "正在加入..." : "收进子讲义"}
+            <button className="mode-chip save-chip" onClick={() => void addCurrentAnswer()} disabled={!answerState || loading || saving || alreadyAdded}>
+              {saving ? "正在加入..." : alreadyAdded ? "已加入" : "加入个人子讲义"}
             </button>
+            {alreadyAdded && <span className="success-pill">加入成功</span>}
           </div>
 
           <div className="assistant-grid">
             <section className="assistant-box selected-zone">
-              <div className="box-title">已选原文 <span>{selected.pageLabel || "等待选择"}</span></div>
+              <div className="box-title">
+                <span>Selected Text</span>
+                <button className="text-tool-button" onClick={() => copyText(hasSelection ? rawSelectedText : "")}>复制</button>
+              </div>
               <div className={`selected-text ${hasSelection ? "" : "empty-state"}`} lang="en">{selectedText}</div>
             </section>
 
             <section className="assistant-box translation-zone">
-              <div className="box-title">浏览器翻译区 <span>可直接翻译</span></div>
+              <div className="box-title">
+                <span>浏览器翻译区</span>
+                <small>这里是普通网页文本，可直接被浏览器翻译。</small>
+              </div>
               <div className={`translation-surface ${hasSelection ? "" : "empty-state"}`} lang="en" translate="yes">
-                {hasSelection ? translationSurface : EMPTY_TRANSLATION}
+                {hasSelection ? translationSurface : emptyTranslation}
               </div>
             </section>
 
             <section className="assistant-box answer-zone">
               <div className="box-title">
-                AI 解释
-                <span>{loading ? "正在思考..." : saving ? "正在保存..." : answerState ? "最新回答" : "等待提问"}</span>
+                <span>AI Answer</span>
+                <small>{loading ? "正在思考..." : saving ? "正在保存..." : answerState ? "最新回答" : "等待提问"}</small>
               </div>
               <div className="answer-text" aria-live="polite">
+                {answerState && !currentAnswerIsFresh && <div className="stale-answer-note">已检测到新的选中文本。旧回答保留在这里，点击解释可更新。</div>}
                 {answerState && <div>{answerState.text}</div>}
                 {loading && <div className="loading-text">正在根据选区、本页上下文和右侧讲义整理解释...</div>}
                 {error && <div className="error-text">{error}</div>}
-                {!answerState && !loading && !error && <div className="empty-state">{EMPTY_ANSWER}</div>}
+                {!answerState && !loading && !error && <div className="empty-state">{emptyAnswer}</div>}
               </div>
             </section>
           </div>
 
           <div className="ask-row">
             <textarea
+              rows={1}
               value={question}
               onChange={(event) => updateQuestion(event.target.value)}
               placeholder="继续追问，例如：为什么这里要最大化 ELBO？"
@@ -338,6 +368,12 @@ export function AssistantDock({
                 if ((event.ctrlKey || event.metaKey) && event.key === "Enter") void submit("question");
               }}
             />
+            <button className={`tiny-lock ${settings.inputLocked ? "active" : ""}`} onClick={() => patchSettings({ inputLocked: !settings.inputLocked })}>
+              {settings.inputLocked ? "输入已锁" : "输入不锁"}
+            </button>
+            <button className={`tiny-lock ${settings.autoAddLocked ? "active" : ""}`} onClick={() => patchSettings({ autoAddLocked: !settings.autoAddLocked })}>
+              {settings.autoAddLocked ? "自动加入已锁" : "手动加入"}
+            </button>
             <button className="send-button" disabled={loading} onClick={() => void submit("question")}>
               {loading ? "..." : "发送"}
             </button>

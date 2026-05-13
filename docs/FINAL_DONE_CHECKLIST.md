@@ -27,6 +27,7 @@ Codex must not declare DONE until every item is checked.
 
 ## AI Assist
 - [x] Bottom dock is visible and resizable.
+- [x] Bottom dock is collapsible and passes desktop/mobile containment checks.
 - [x] Selected text updates immediately.
 - [x] Browser translation surface updates immediately.
 - [x] AI answer uses selected text + context.
@@ -38,6 +39,7 @@ Codex must not declare DONE until every item is checked.
 
 ## Final summary
 - [x] `结束课程总结` generates Markdown.
+- [x] Markdown includes `# 本节个人子讲义`, `## 课程与文件信息`, `## 本节核心问题`, `## 我问过的问题`, `## 句子级解释`, `## 易错点`, `## 考前复习清单`, and `## 仍需回看页码`.
 - [x] Markdown contains saved questions and answers.
 - [x] Markdown preview is readable.
 - [x] Copy works.
@@ -45,6 +47,8 @@ Codex must not declare DONE until every item is checked.
 
 ## Product quality
 - [x] UI is Chinese by default.
+- [x] UI uses the warm ivory / soft beige TwinPDF craft style, not the earlier blue-white demo style.
+- [x] Left/right reading panes are stable, independently scrolling, and do not overflow on the real smoke viewport.
 - [x] Interface is minimal and practical.
 - [x] No decorative dashboard/bookmark/tag bloat.
 - [x] `WORKLOG.md` is updated.

@@ -62,7 +62,7 @@ Not allowed:
 
 ```json
 {
-  "assistantHeight": 320,
+  "assistantHeight": 340,
   "inputLocked": false,
   "autoAddLocked": false,
   "lastLeftPdfName": "lecture8.pdf",

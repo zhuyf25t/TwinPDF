@@ -46,7 +46,7 @@ export function PdfPane({ onSelectionChange, onPdfFileLoaded, onSentenceIndexRea
     sentences: splitIntoSentences(sampleText, 7)
   });
   const [fileName, setFileName] = useState("未打开 PDF");
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(0.6);
   const [indexStatus, setIndexStatus] = useState("等待导入 PDF");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textLayerRef = useRef<HTMLDivElement | null>(null);
@@ -161,12 +161,17 @@ export function PdfPane({ onSelectionChange, onPdfFileLoaded, onSentenceIndexRea
         <button className="icon-button" onClick={() => setZoom((z) => Math.max(0.6, Number((z - 0.1).toFixed(1))))}>-</button>
         <span className="page-pill">{Math.round(zoom * 100)}%</span>
         <button className="icon-button" onClick={() => setZoom((z) => Math.min(2, Number((z + 0.1).toFixed(1))))}>+</button>
+        <span className="select-tool-pill">选择文本</span>
       </div>
       <div className="pdf-body">
         <aside className="thumb-rail" aria-label="页面缩略图">
           {thumbPages.map((n) => (
             <div key={n} className={`thumb ${n === displayPageNumber ? "active" : ""}`}>
-              <div className="thumb-box" />
+              <div className="thumb-box" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </div>
               {n}
             </div>
           ))}

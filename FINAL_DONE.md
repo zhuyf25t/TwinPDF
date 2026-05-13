@@ -9,12 +9,14 @@ TwinPDF now satisfies the repository `/goal` standard as a practical personal bi
 
 - left side loads and renders the English course PDF;
 - right side loads Markdown/text handouts and can import the second user PDF as a Markdown-like handout;
-- bottom AI Assist is visible, collapsible, resizable, Chinese-first, and centered on selected text;
+- the UI now follows the warm ivory symmetric reading-craft direction rather than the earlier blue/white demo style;
+- the desktop workspace uses two stable independently scrolling reading panes with compact headers and ellipsized long file names;
+- bottom AI Assist is visible, collapsible, resizable, Chinese-first, warm-styled, and centered on selected text;
 - selected text updates the raw text zone and ordinary browser-translation HTML zone immediately;
 - AI Assist uses selected text, page context, right-handout context, recent entries, and sentence labels;
 - input lock, sublecture lock, manual add, and green `加入成功` are implemented;
 - study logs, settings, sentence caches, page labels, personal subhandout, and exports write to the chosen workspace folder;
-- final course summary generates readable Markdown and saves to `exports/`.
+- final course summary generates readable Markdown with the required `# 本节个人子讲义` structure and saves to `exports/`.
 
 ## Verification
 
@@ -29,6 +31,12 @@ npm run smoke:real-pdf
 ```
 
 `npm run build` passes with Vite's expected PDF worker chunk-size warning.
+
+Additional UI smoke command used for final screenshot verification:
+
+```bash
+SMOKE_SCREENSHOT_DIR=F:\tmp\twinpdf-final-ui npm run smoke:real-pdf
+```
 
 Dev server:
 
@@ -61,13 +69,16 @@ Browser smoke with `npm run smoke:real-pdf` verified:
 - left PDF loading;
 - right PDF handout loading through PDF-to-Markdown extraction;
 - selected text capture from rendered PDF;
+- warm symmetric two-pane layout without overflow;
+- bottom AI Assist dock width, height, bottom gap, containment, and internal non-overlap;
+- mobile dock layout with visible selected text, browser translation, AI answer, locks, and send action;
 - browser translation surface uses `lang="en"` and `translate="yes"`;
 - mock AI answer;
 - input lock;
 - sublecture auto-add lock;
 - manual add;
 - green `加入成功`;
-- final summary preview and export write.
+- final summary preview includes required headings and export write.
 
 ## Remaining Limitations
 

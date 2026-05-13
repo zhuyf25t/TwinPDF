@@ -30,13 +30,16 @@ describe("buildFinalSummaryMarkdown", () => {
       createdAt: new Date("2026-05-13T15:40:00.000Z")
     });
 
-    expect(markdown).toContain("# 个人子讲义：计算机系统概论 Lec8");
+    expect(markdown).toContain("# 本节个人子讲义");
+    expect(markdown).toContain("## 课程与文件信息");
+    expect(markdown).toContain("- 课程：计算机系统概论 Lec8");
     expect(markdown).toContain("## 本节核心问题");
     expect(markdown).toContain("## 我问过的问题");
-    expect(markdown).toContain("## 易错概念");
     expect(markdown).toContain("## 句子级解释");
+    expect(markdown).toContain("## 易错点");
     expect(markdown).toContain("## 公式与定义");
     expect(markdown).toContain("## 考前复习清单");
+    expect(markdown).toContain("## 仍需回看页码");
     expect(markdown).toContain("## 原始问答日志");
     expect(markdown).toContain("Page 8");
     expect(markdown).toContain(entry.question);
@@ -62,7 +65,7 @@ describe("ensureFinalSummaryMarkdown", () => {
     });
 
     expect(ensured).toBe(existing);
-    expect(ensured.match(/# 个人子讲义/g)).toHaveLength(1);
+    expect(ensured.match(/# 本节个人子讲义/g)).toHaveLength(1);
   });
 });
 

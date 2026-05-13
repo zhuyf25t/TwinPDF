@@ -17,7 +17,7 @@ export type AppSettings = {
 };
 
 export const defaultSettings: AppSettings = {
-  assistantHeight: 320,
+  assistantHeight: 340,
   inputLocked: false,
   autoAddLocked: false
 };

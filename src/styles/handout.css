@@ -1,0 +1,100 @@
+.handout-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 30px clamp(28px, 4vw, 54px) 360px;
+  background:
+    linear-gradient(90deg, rgba(251, 244, 232, 0.68), rgba(255, 253, 249, 0.92) 18%, rgba(255, 253, 249, 0.94) 82%, rgba(251, 244, 232, 0.68)),
+    var(--surface);
+}
+
+.handout-content {
+  max-width: 760px;
+  margin: 0 auto;
+  line-height: 1.86;
+  font-size: 17px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.handout-content h1 {
+  font-size: clamp(24px, 2.5vw, 30px);
+  line-height: 1.24;
+  margin: 0 0 22px;
+  letter-spacing: 0;
+  color: var(--accent-strong);
+}
+
+.handout-content h2 {
+  font-size: 21px;
+  line-height: 1.35;
+  margin-top: 30px;
+  border-left: 4px solid var(--accent);
+  padding-left: 12px;
+  color: var(--accent-strong);
+}
+
+.handout-content h3 {
+  font-size: 18px;
+  margin-top: 24px;
+}
+
+.handout-content p {
+  margin: 12px 0;
+}
+
+.handout-content ul,
+.handout-content ol {
+  padding-left: 1.35em;
+}
+
+.handout-content li {
+  margin: 7px 0;
+}
+
+.handout-content blockquote {
+  margin: 22px 0;
+  padding: 15px 17px;
+  background: var(--accent-soft);
+  border: 1px solid #ead3ac;
+  border-radius: var(--radius);
+}
+
+.handout-content pre {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  background: #2b241d;
+  color: #fff8ed;
+}
+
+.handout-editor {
+  max-width: 760px;
+  margin: 38px auto 0;
+  color: var(--muted);
+}
+
+.handout-editor summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.handout-editor textarea {
+  width: 100%;
+  min-height: 260px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 12px;
+  background: var(--surface);
+  color: var(--text);
+  line-height: 1.65;
+  resize: vertical;
+}
+
+@media (max-width: 820px) {
+  .handout-split {
+    padding: 26px 22px 380px;
+  }
+}

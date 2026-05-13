@@ -19,7 +19,13 @@ export async function extractPdfTextAsMarkdown(
     useSystemFonts: true
   }).promise;
 
-  const lines = [`# ${file.name}`, "", `共 ${pdf.numPages} 页。`, ""];
+  const lines = [
+    "# 中文详细讲义",
+    "",
+    `来源文件：${file.name}`,
+    `共 ${pdf.numPages} 页。`,
+    ""
+  ];
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     onProgress?.({ pageNumber, pageCount: pdf.numPages });

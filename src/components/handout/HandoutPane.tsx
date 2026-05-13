@@ -2,11 +2,12 @@ import { renderSimpleMarkdown } from "../../lib/markdown";
 
 type HandoutPaneProps = {
   markdown: string;
+  fileName?: string;
   onChange: (markdown: string) => void;
   onOpenFile: (file: File) => void;
 };
 
-export function HandoutPane({ markdown, onChange, onOpenFile }: HandoutPaneProps) {
+export function HandoutPane({ markdown, fileName, onChange, onOpenFile }: HandoutPaneProps) {
   const html = renderSimpleMarkdown(markdown);
 
   return (
@@ -26,6 +27,7 @@ export function HandoutPane({ markdown, onChange, onOpenFile }: HandoutPaneProps
             }}
           />
         </label>
+        {fileName && <span className="handout-file-name" title={fileName}>{fileName}</span>}
         <span className="toolbar-spacer" />
         <button className="toolbar-button small" onClick={() => navigator.clipboard.writeText(markdown)}>复制讲义</button>
       </div>
