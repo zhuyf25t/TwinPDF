@@ -5,38 +5,95 @@ export type ChatMessage = {
   content: string;
 };
 
-export async function callDeepSeek(messages: ChatMessage[], temperature = 0.2): Promise<string> {
-  const config = aiConfig();
-  if (config.mock) return mockAnswer(messages);
+export type DeepSeekOptions = {
+  temperature?: number;
+  maxTokens?: number;
+  timeoutMs?: number;
+};
 
-  const response = await fetch(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`
-    },
-    body: JSON.stringify({
-      model: config.model,
-      messages,
-      temperature
-    })
-  });
+export class AIProviderError extends Error {
+  statusCode: number;
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`DeepSeek request failed: ${response.status} ${text.slice(0, 500)}`);
+  constructor(message: string, statusCode = 502) {
+    super(message);
+    this.name = "AIProviderError";
+    this.statusCode = statusCode;
   }
-  const data = await response.json() as { choices?: { message?: { content?: string } }[] };
-  return data.choices?.[0]?.message?.content?.trim() || "AI 没有返回内容。";
 }
 
-function mockAnswer(messages: ChatMessage[]) {
-  const last = messages[messages.length - 1]?.content || "";
-  if (last.includes("label")) {
-    return JSON.stringify({ labels: [] });
+export async function callDeepSeek(
+  messages: ChatMessage[],
+  options: DeepSeekOptions | number = {}
+): Promise<string> {
+  const config = aiConfig();
+  if (config.mock) {
+    throw new AIProviderError("当前处于 Mock AI 模式，没有调用外部模型。", 503);
   }
-  if (last.includes("最终个人子讲义") || last.includes("个人子讲义")) {
-    return `# 个人子讲义（Mock）\n\n## 本节核心问题\n这节课的核心是把难以直接理解的英文课件内容转化为可复习的个人理解。\n\n## 我问过的问题\n- 这里会整理本次学习过程中保存的问题。\n\n## 考前复习清单\n- 回看所有加入子讲义的句子。\n- 对每个公式确认“它为什么出现、每一项是什么意思、考试可能怎么问”。\n`;
+
+  const resolvedOptions = typeof options === "number" ? { temperature: options } : options;
+  const controller = new AbortController();
+  const timeout = windowlessTimeout(() => controller.abort(), resolvedOptions.timeoutMs ?? 30_000);
+
+  try {
+    const body: Record<string, unknown> = {
+      model: config.model,
+      messages,
+      temperature: resolvedOptions.temperature ?? 0.2
+    };
+    if (resolvedOptions.maxTokens) body.max_tokens = resolvedOptions.maxTokens;
+
+    const response = await fetch(`${config.baseUrl.replace(/\/+$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+
+    const text = await response.text();
+    if (!response.ok) throw providerError(response.status, text);
+
+    let data: { choices?: { message?: { content?: string } }[] };
+    try {
+      data = JSON.parse(text) as { choices?: { message?: { content?: string } }[] };
+    } catch {
+      throw new AIProviderError("AI 返回格式异常，请稍后重试。");
+    }
+
+    const content = data.choices?.[0]?.message?.content?.trim();
+    if (!content) throw new AIProviderError("AI 暂时没有返回内容，请换个问题再试。");
+    return content;
+  } catch (error) {
+    if (error instanceof AIProviderError) throw error;
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new AIProviderError("AI 响应超时了，请稍后再试或缩短选中文本。", 504);
+    }
+    throw new AIProviderError("AI 服务暂时不可用，请稍后重试。");
+  } finally {
+    clearTimeout(timeout);
   }
-  return "这句话其实是在说：我们把原来很难直接处理的目标，换成一个更容易优化的替代目标。先别被符号吓到，核心是：这个目标函数虽然不是原目标本身，但它足够接近，而且能被计算和优化。你可以把它理解成学习时先抓住一个可以下手的台阶，再一步步逼近真正想要的东西。";
+}
+
+function providerError(status: number, rawBody: string) {
+  if (status === 401 || status === 403) {
+    return new AIProviderError("AI 服务认证失败，请检查服务端 env.local 里的 DeepSeek key。", 502);
+  }
+  if (status === 429) {
+    return new AIProviderError("AI 服务现在比较忙或额度受限，请稍后再试。", 429);
+  }
+  if (status >= 500) {
+    return new AIProviderError("AI 服务端暂时不可用，请稍后重试。", 502);
+  }
+
+  if (status === 400) {
+    return new AIProviderError("AI 请求内容太长或格式不被服务接受，请缩短选中文本后重试。", 502);
+  }
+
+  return new AIProviderError("AI 请求没有成功，请稍后再试。", 502);
+}
+
+function windowlessTimeout(callback: () => void, delay: number) {
+  return setTimeout(callback, delay);
 }

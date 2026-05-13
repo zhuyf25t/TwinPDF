@@ -5,11 +5,14 @@ const LAST_KEY = "last";
 type StoredHandle = {
   name: string;
   handle: any;
-  savedAt: string;
 };
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
+    if (typeof indexedDB === "undefined") {
+      reject(new Error("当前浏览器不支持 IndexedDB，无法记住上次的工作区。"));
+      return;
+    }
     const request = indexedDB.open(DB_NAME, 1);
     request.onupgradeneeded = () => {
       request.result.createObjectStore(STORE_NAME);
@@ -23,7 +26,7 @@ export async function saveLastWorkspaceHandle(name: string, handle: any) {
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).put({ name, handle, savedAt: new Date().toISOString() } satisfies StoredHandle, LAST_KEY);
+    tx.objectStore(STORE_NAME).put({ name, handle } satisfies StoredHandle, LAST_KEY);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

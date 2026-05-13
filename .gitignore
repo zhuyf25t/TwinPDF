@@ -9,4 +9,3 @@ env.local
 # Keep user study workspaces outside this repo.
 /workspace/
 STATE_FOR_RESUME.md
-FINAL_DONE.md

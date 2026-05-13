@@ -1,13 +1,23 @@
 import type { AssistRequest, AssistResponse, FinalizeRequest, FinalizeResponse, LabelPageRequest, LabelPageResponse } from "../../shared/contracts";
 
 async function postJson<TResponse>(url: string, payload: unknown): Promise<TResponse> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  const data = await response.json() as TResponse & { error?: string };
-  if (!response.ok) throw new Error(data.error || `${url} failed`);
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch {
+    throw new Error("无法连接 TwinPDF AI 后端，请确认 npm run dev 仍在运行。");
+  }
+
+  const text = await response.text();
+  const data = parseJson<TResponse & { error?: string }>(text);
+  if (!response.ok) {
+    throw new Error(data?.error || "AI 服务暂时不可用，请稍后再试。");
+  }
+  if (!data) throw new Error("AI 后端返回了空响应，请稍后再试。");
   return data;
 }
 
@@ -21,4 +31,13 @@ export function requestLabelPage(payload: LabelPageRequest) {
 
 export function requestFinalSummary(payload: FinalizeRequest) {
   return postJson<FinalizeResponse>("/api/ai/finalize", payload);
+}
+
+function parseJson<T>(text: string): T | null {
+  if (!text.trim()) return null;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
 }

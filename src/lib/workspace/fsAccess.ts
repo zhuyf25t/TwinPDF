@@ -1,9 +1,11 @@
 import { defaultSettings, type AppSettings, type StudyLogEntry, type WorkspaceManifest, type WorkspaceRef } from "../../shared/contracts";
+import { buildPersonalSubhandoutMarkdown } from "../markdown";
 import { loadLastWorkspaceHandle, saveLastWorkspaceHandle } from "./handleStore";
 
 export const WORKSPACE_DIRS = [
   "sources",
   "handouts",
+  "handouts/imported-handouts",
   "memory",
   "exports",
   "cache",
@@ -13,6 +15,16 @@ export const WORKSPACE_DIRS = [
 ];
 
 const MANIFEST_FILE = "twinpdf.workspace.json";
+const SETTINGS_FILE = "memory/settings.json";
+const STUDY_LOG_FILE = "memory/study-log.json";
+const SESSION_LOG_FILE = "memory/session-log.jsonl";
+const PERSONAL_SUBHANDOUT_FILE = "memory/personal-subhandout.md";
+const CURRENT_HANDOUT_FILE = "handouts/current-handout.md";
+
+type JsonReadOptions<T> = {
+  repairCorrupt?: boolean;
+  validate?: (value: unknown) => value is T;
+};
 
 export async function chooseWorkspace(): Promise<WorkspaceRef> {
   if (!window.showDirectoryPicker) {
@@ -41,54 +53,56 @@ export async function ensurePermission(handle: any) {
   }
   if (typeof handle.requestPermission === "function") {
     const status = await handle.requestPermission(options);
-    if (status !== "granted") throw new Error("需要本地工作区读写权限，才能保存历史数据。");
+    if (status !== "granted") throw new Error("需要本地工作区读写权限，TwinPDF 才能保存你的学习记录。");
   }
 }
 
 export async function ensureWorkspaceShape(root: any) {
   for (const dir of WORKSPACE_DIRS) await getDirectory(root, dir, true);
-  const manifest = await readJson<WorkspaceManifest | null>(root, MANIFEST_FILE, null);
-  const now = new Date().toISOString();
-  if (!manifest) {
-    await writeJson(root, MANIFEST_FILE, {
-      schemaVersion: 1,
-      app: "TwinPDF",
-      workspaceName: root.name || "TwinPDF Workspace",
-      createdAt: now,
-      updatedAt: now
-    } satisfies WorkspaceManifest);
-  }
-  if (!(await exists(root, "memory/settings.json"))) await writeJson(root, "memory/settings.json", defaultSettings);
-  if (!(await exists(root, "memory/study-log.json"))) await writeJson(root, "memory/study-log.json", []);
-  if (!(await exists(root, "memory/personal-subhandout.md"))) await writeText(root, "memory/personal-subhandout.md", "# 个人子讲义\n\n");
+
+  await ensureJson(root, MANIFEST_FILE, createManifest(root.name || "TwinPDF Workspace"), isWorkspaceManifest);
+  await ensureJson(root, SETTINGS_FILE, defaultSettings, isAppSettings);
+  await ensureJson(root, STUDY_LOG_FILE, [], Array.isArray);
+  await ensureTextFile(root, SESSION_LOG_FILE, "");
+  await ensureTextFile(root, CURRENT_HANDOUT_FILE, sampleHandout());
+  await ensureTextFile(root, PERSONAL_SUBHANDOUT_FILE, buildPersonalSubhandoutMarkdown([], { workspaceName: root.name }));
 }
 
 export async function loadWorkspaceData(workspace: WorkspaceRef) {
-  const manifest = await readJson<WorkspaceManifest>(workspace.handle, MANIFEST_FILE, {
-    schemaVersion: 1,
-    app: "TwinPDF",
-    workspaceName: workspace.name,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  });
-  const settings = await readJson<AppSettings>(workspace.handle, "memory/settings.json", defaultSettings);
-  const studyLog = await readJson<StudyLogEntry[]>(workspace.handle, "memory/study-log.json", []);
-  const handoutMarkdown = await readText(workspace.handle, "handouts/current-handout.md", sampleHandout());
+  const manifest = await readJson<WorkspaceManifest>(
+    workspace.handle,
+    MANIFEST_FILE,
+    createManifest(workspace.name),
+    { validate: isWorkspaceManifest }
+  );
+  const settings = await readJson<AppSettings>(
+    workspace.handle,
+    SETTINGS_FILE,
+    defaultSettings,
+    { validate: isAppSettings }
+  );
+  const studyLog = await readJson<StudyLogEntry[]>(
+    workspace.handle,
+    STUDY_LOG_FILE,
+    [],
+    { validate: Array.isArray }
+  );
+  const handoutMarkdown = await readText(workspace.handle, CURRENT_HANDOUT_FILE, sampleHandout());
   return { manifest, settings: { ...defaultSettings, ...settings }, studyLog, handoutMarkdown };
 }
 
 export async function saveSettings(workspace: WorkspaceRef, settings: AppSettings) {
-  await writeJson(workspace.handle, "memory/settings.json", settings);
+  await writeJson(workspace.handle, SETTINGS_FILE, settings);
 }
 
 export async function saveStudyLog(workspace: WorkspaceRef, entries: StudyLogEntry[]) {
-  await writeJson(workspace.handle, "memory/study-log.json", entries);
-  const md = buildPersonalSubhandout(entries);
-  await writeText(workspace.handle, "memory/personal-subhandout.md", md);
+  await writeJson(workspace.handle, STUDY_LOG_FILE, entries);
+  const md = buildPersonalSubhandoutMarkdown(entries, { workspaceName: workspace.name });
+  await writeText(workspace.handle, PERSONAL_SUBHANDOUT_FILE, md);
 }
 
 export async function saveHandout(workspace: WorkspaceRef, markdown: string) {
-  await writeText(workspace.handle, "handouts/current-handout.md", markdown);
+  await writeText(workspace.handle, CURRENT_HANDOUT_FILE, markdown);
 }
 
 export async function saveExportMarkdown(workspace: WorkspaceRef, markdown: string) {
@@ -117,9 +131,7 @@ export async function writePageLabels(workspace: WorkspaceRef, pdfId: string, pa
 
 export async function readText(root: any, path: string, fallback = "") {
   try {
-    const handle = await getFileHandle(root, path, false);
-    const file = await handle.getFile();
-    return await file.text();
+    return await readExistingText(root, path);
   } catch {
     return fallback;
   }
@@ -132,18 +144,66 @@ export async function writeText(root: any, path: string, text: string) {
   await writable.close();
 }
 
-export async function readJson<T>(root: any, path: string, fallback: T): Promise<T> {
+export async function readJson<T>(root: any, path: string, fallback: T, options: JsonReadOptions<T> = {}): Promise<T> {
+  let text: string;
   try {
-    const text = await readText(root, path, "");
-    if (!text.trim()) return fallback;
-    return JSON.parse(text) as T;
+    text = await readExistingText(root, path);
   } catch {
+    return fallback;
+  }
+
+  try {
+    if (!text.trim()) throw new Error("Empty JSON file.");
+    const parsed = JSON.parse(text) as unknown;
+    if (options.validate && !options.validate(parsed)) throw new Error("Unexpected JSON shape.");
+    return parsed as T;
+  } catch (error) {
+    if (options.repairCorrupt !== false) {
+      await preserveBrokenFile(root, path, text).catch((backupError) => {
+        console.warn(`TwinPDF 无法备份损坏的工作区文件 ${path}`, backupError);
+      });
+      await writeJson(root, path, fallback);
+      const reason = error instanceof Error ? error.message : String(error);
+      console.warn(`TwinPDF 已修复损坏的工作区文件 ${path}：${reason}`);
+    }
     return fallback;
   }
 }
 
 export async function writeJson(root: any, path: string, data: unknown) {
   await writeText(root, path, JSON.stringify(data, null, 2));
+}
+
+async function ensureJson<T>(root: any, path: string, fallback: T, validate: (value: unknown) => value is T) {
+  if (!(await exists(root, path))) {
+    await writeJson(root, path, fallback);
+    return;
+  }
+  await readJson(root, path, fallback, { validate });
+}
+
+async function ensureTextFile(root: any, path: string, fallback: string) {
+  if (!(await exists(root, path))) await writeText(root, path, fallback);
+}
+
+async function readExistingText(root: any, path: string) {
+  const handle = await getFileHandle(root, path, false);
+  const file = await handle.getFile();
+  return await file.text();
+}
+
+async function preserveBrokenFile(root: any, path: string, text: string) {
+  const brokenPath = buildBrokenPath(path);
+  await writeText(root, brokenPath, text);
+}
+
+function buildBrokenPath(path: string) {
+  const parts = path.split("/").filter(Boolean);
+  const filename = parts.pop();
+  if (!filename) throw new Error(`Invalid file path: ${path}`);
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const brokenName = `${filename}.broken.${stamp}`;
+  return [...parts, brokenName].join("/");
 }
 
 async function exists(root: any, path: string) {
@@ -170,29 +230,47 @@ async function getFileHandle(root: any, path: string, create: boolean) {
   return dir.getFileHandle(filename, { create });
 }
 
-function sampleHandout() {
-  return `# 讲义：变分推断与证据下界（ELBO）\n\n## 1. 核心思想\n在复杂模型中，精确推断通常是不可行的。变分推断通过引入一个近似分布 $q(z)$ 来逼近真实后验 $p(z|x)$，并将推断问题转化为优化问题。\n\n> **证据下界（ELBO）** 提供了一个可计算的目标函数，我们可以对 $q(z)$ 进行优化以最大化它。\n\n## 2. 证据下界（ELBO）\n对任意分布 $q(z)$，有：\n\n$$\n\\log p(x) \\ge \\mathbb{E}_{q(z)}[\\log p(x,z)-\\log q(z)] = \\mathcal{L}(q)\n$$\n\n- $\\log p(x)$：对数证据。\n- $\\mathcal{L}(q)$：证据下界。\n- 最大化 $\\mathcal{L}(q)$ 可以让 $q(z)$ 更接近真实后验。\n`;
+function createManifest(workspaceName: string): WorkspaceManifest {
+  const now = new Date().toISOString();
+  return {
+    schemaVersion: 1,
+    app: "TwinPDF",
+    workspaceName,
+    createdAt: now,
+    updatedAt: now
+  };
 }
 
-function buildPersonalSubhandout(entries: StudyLogEntry[]) {
-  const lines = ["# 个人子讲义", "", `更新时间：${new Date().toLocaleString()}`, ""];
-  for (const [index, entry] of entries.entries()) {
-    lines.push(`## ${index + 1}. ${entry.pageLabel || "未知页码"} · ${entry.question || "AI 解释"}`);
-    lines.push("");
-    lines.push("**原文**");
-    lines.push("");
-    lines.push(`> ${entry.selectedText}`);
-    lines.push("");
-    lines.push("**浏览器翻译区内容**");
-    lines.push("");
-    lines.push(`> ${entry.translationSurface}`);
-    lines.push("");
-    lines.push("**AI 回答**");
-    lines.push("");
-    lines.push(entry.answer);
-    lines.push("");
-  }
-  return lines.join("\n");
+function isWorkspaceManifest(value: unknown): value is WorkspaceManifest {
+  if (!value || typeof value !== "object") return false;
+  const manifest = value as Partial<WorkspaceManifest>;
+  return manifest.schemaVersion === 1
+    && manifest.app === "TwinPDF"
+    && typeof manifest.workspaceName === "string"
+    && typeof manifest.createdAt === "string"
+    && typeof manifest.updatedAt === "string";
+}
+
+function isAppSettings(value: unknown): value is AppSettings {
+  if (!value || typeof value !== "object") return false;
+  const settings = value as Partial<AppSettings>;
+  return typeof settings.assistantHeight === "number"
+    && typeof settings.inputLocked === "boolean"
+    && typeof settings.autoAddLocked === "boolean"
+    && (settings.lastLeftPdfName === undefined || typeof settings.lastLeftPdfName === "string")
+    && (settings.lastRightHandoutName === undefined || typeof settings.lastRightHandoutName === "string");
+}
+
+function sampleHandout() {
+  return [
+    "# 当前讲义",
+    "",
+    "这里保存右侧中文讲义。导入 Markdown 后，TwinPDF 会把当前讲义写入 `handouts/current-handout.md`。",
+    "",
+    "## 课堂记录",
+    "",
+    "- 可以在这里整理重点、公式和自己的理解。"
+  ].join("\n");
 }
 
 export function safeName(input: string) {

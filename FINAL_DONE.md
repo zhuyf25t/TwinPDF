@@ -1,0 +1,76 @@
+# TwinPDF Final Done
+
+Date: 2026-05-14
+Branch: `codex/goal-autopilot`
+
+## Completion
+
+TwinPDF now satisfies the repository `/goal` standard as a practical personal bilingual study product:
+
+- left side loads and renders the English course PDF;
+- right side loads Markdown/text handouts and can import the second user PDF as a Markdown-like handout;
+- bottom AI Assist is visible, collapsible, resizable, Chinese-first, and centered on selected text;
+- selected text updates the raw text zone and ordinary browser-translation HTML zone immediately;
+- AI Assist uses selected text, page context, right-handout context, recent entries, and sentence labels;
+- input lock, sublecture lock, manual add, and green `加入成功` are implemented;
+- study logs, settings, sentence caches, page labels, personal subhandout, and exports write to the chosen workspace folder;
+- final course summary generates readable Markdown and saves to `exports/`.
+
+## Verification
+
+Commands run successfully:
+
+```bash
+npm install
+npm run typecheck
+npm run build
+npm run test
+npm run smoke:real-pdf
+```
+
+`npm run build` passes with Vite's expected PDF worker chunk-size warning.
+
+Dev server:
+
+```bash
+npm run dev
+```
+
+In this environment, `env.local` sets the app URL to:
+
+```text
+http://localhost:9999
+```
+
+## Real PDF Smoke Test
+
+Test folder:
+
+```text
+C:\Users\Laptop\Desktop\网络学堂\[11] 计算机系统概论\lec8
+```
+
+Files verified:
+
+- `lec08-vm-malloc.pdf`: 49 pages, 49 pages with extracted text, 1225 sentence units.
+- `lec08_vm_malloc_super_detailed_guide.pdf`: 102 pages, 102 pages with extracted text, 1702 sentence units.
+
+Browser smoke with `npm run smoke:real-pdf` verified:
+
+- workspace selection flow;
+- left PDF loading;
+- right PDF handout loading through PDF-to-Markdown extraction;
+- selected text capture from rendered PDF;
+- browser translation surface uses `lang="en"` and `translate="yes"`;
+- mock AI answer;
+- input lock;
+- sublecture auto-add lock;
+- manual add;
+- green `加入成功`;
+- final summary preview and export write.
+
+## Remaining Limitations
+
+- Automated smoke uses a File System Access API stub for the directory picker because headless browser automation cannot reliably grant a real OS directory picker. Workspace behavior is separately covered by unit tests and app code uses the real browser File System Access API in normal use.
+- Page labeling runs in the background and is intentionally bounded per page so reading is not blocked.
+- DeepSeek real mode depends on a valid server-side `env.local`; mock mode is used when `MOCK_AI=true` or no key exists.

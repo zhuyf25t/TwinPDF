@@ -14,10 +14,10 @@ export function HandoutPane({ markdown, onChange, onOpenFile }: HandoutPaneProps
       <div className="pane-toolbar">
         <strong>中文讲义</strong>
         <label className="toolbar-button">
-          Open File
+          打开讲义
           <input
             type="file"
-            accept=".md,.txt,text/markdown,text/plain"
+            accept=".md,.txt,.pdf,text/markdown,text/plain,application/pdf"
             hidden
             onChange={(event) => {
               const file = event.target.files?.[0];

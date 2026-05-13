@@ -5,22 +5,40 @@ import { PdfPane } from "./components/pdf/PdfPane";
 import { FinalSummaryModal } from "./components/summary/FinalSummaryModal";
 import { WorkspaceGate } from "./components/workspace/WorkspaceGate";
 import { requestFinalSummary, requestLabelPage } from "./lib/ai/client";
+import { buildFinalSummaryMarkdown, ensureFinalSummaryMarkdown } from "./lib/markdown";
+import { extractPdfTextAsMarkdown } from "./lib/pdf/extractPdf";
 import { buildNearbyContext } from "./lib/pdf/sentence";
-import { copyFileToWorkspace, loadWorkspaceData, safeName, saveExportMarkdown, saveHandout, saveSettings, saveStudyLog, writePageLabels, writeSentenceCache } from "./lib/workspace/fsAccess";
-import type { AppSettings, PdfSentenceIndex, SelectedContext, StudyLogEntry, WorkspaceData, WorkspaceRef } from "./shared/contracts";
+import {
+  copyFileToWorkspace,
+  loadWorkspaceData,
+  safeName,
+  saveExportMarkdown,
+  saveHandout,
+  saveSettings,
+  saveStudyLog,
+  writePageLabels,
+  writeSentenceCache
+} from "./lib/workspace/fsAccess";
+import type {
+  AppSettings,
+  PdfSentenceIndex,
+  SelectedContext,
+  StudyLogEntry,
+  WorkspaceData,
+  WorkspaceRef
+} from "./shared/contracts";
 
 const initialSelection: SelectedContext = {
-  selectedText: "The Evidence Lower Bound (ELBO) provides a tractable objective that we can maximize with respect to q(z).",
-  pageLabel: "Page 7",
-  pageNumber: 7,
-  pageText: "Variational inference turns inference into an optimization problem by introducing an approximate distribution q(z) to the true posterior p(z|x). The Evidence Lower Bound (ELBO) provides a tractable objective that we can maximize with respect to q(z). For any distribution q(z), log p(x) is greater than or equal to the expected log joint minus log q(z).",
-  source: "left-pdf"
+  selectedText: "",
+  pageLabel: "未选择",
+  pageText: "",
+  source: "unknown"
 };
 
 export default function App() {
   const [workspace, setWorkspace] = useState<WorkspaceRef | null>(null);
   const [workspaceData, setWorkspaceData] = useState<WorkspaceData | null>(null);
-  const [courseTitle, setCourseTitle] = useState("TwinPDF · 本次课程");
+  const [courseTitle, setCourseTitle] = useState("本次课程");
   const [selected, setSelected] = useState<SelectedContext>(initialSelection);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryMarkdown, setSummaryMarkdown] = useState("");
@@ -40,18 +58,27 @@ export default function App() {
 
   useEffect(() => {
     if (!workspace || !workspaceData) return;
-    void saveSettings(workspace, workspaceData.settings).catch(console.error);
+    void saveSettings(workspace, workspaceData.settings).catch((error) => {
+      console.error(error);
+      setStatus(`保存设置失败：${error instanceof Error ? error.message : String(error)}`);
+    });
   }, [workspace, workspaceData?.settings]);
 
   useEffect(() => {
     if (!workspace || !workspaceData) return;
-    void saveStudyLog(workspace, workspaceData.studyLog).catch(console.error);
+    void saveStudyLog(workspace, workspaceData.studyLog).catch((error) => {
+      console.error(error);
+      setStatus(`保存学习记录失败：${error instanceof Error ? error.message : String(error)}`);
+    });
   }, [workspace, workspaceData?.studyLog]);
 
   useEffect(() => {
     if (!workspace || !workspaceData) return;
     const timer = window.setTimeout(() => {
-      void saveHandout(workspace, workspaceData.handoutMarkdown).catch(console.error);
+      void saveHandout(workspace, workspaceData.handoutMarkdown).catch((error) => {
+        console.error(error);
+        setStatus(`保存讲义失败：${error instanceof Error ? error.message : String(error)}`);
+      });
     }, 500);
     return () => window.clearTimeout(timer);
   }, [workspace, workspaceData?.handoutMarkdown]);
@@ -60,64 +87,81 @@ export default function App() {
     const data = await loadWorkspaceData(nextWorkspace);
     setWorkspace(nextWorkspace);
     setWorkspaceData(data);
-    setCourseTitle(data.manifest.workspaceName || nextWorkspace.name);
+    setCourseTitle(data.manifest.workspaceName || nextWorkspace.name || "本次课程");
     setStatus(`工作区：${nextWorkspace.name}`);
   }
 
   function requireData(): WorkspaceData {
-    if (!workspaceData) throw new Error("Workspace not ready.");
+    if (!workspaceData) throw new Error("工作区还没有准备好。");
     return workspaceData;
   }
 
-  function updateSettings(settings: AppSettings) {
+  function updateSettings(nextSettings: AppSettings) {
     const data = requireData();
-    setWorkspaceData({ ...data, settings });
+    setWorkspaceData({ ...data, settings: nextSettings });
   }
 
   async function addStudyLogEntry(entry: StudyLogEntry) {
     const data = requireData();
-    const nextEntries = data.studyLog.some((item) => item.id === entry.id) ? data.studyLog : [entry, ...data.studyLog];
+    const nextEntries = data.studyLog.some((item) => item.id === entry.id)
+      ? data.studyLog
+      : [entry, ...data.studyLog];
     setWorkspaceData({ ...data, studyLog: nextEntries });
     if (workspace) await saveStudyLog(workspace, nextEntries);
   }
 
   async function handleRightFile(file: File) {
-    const text = await file.text();
-    setWorkspaceData((data) => data ? { ...data, handoutMarkdown: text, settings: { ...data.settings, lastRightHandoutName: file.name } } : data);
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const text = isPdf
+      ? await extractPdfTextAsMarkdown(file, ({ pageNumber, pageCount }) => {
+        setStatus(`正在提取右侧讲义 PDF：第 ${pageNumber}/${pageCount} 页`);
+      })
+      : await file.text();
+    setWorkspaceData((data) => data
+      ? { ...data, handoutMarkdown: text, settings: { ...data.settings, lastRightHandoutName: file.name } }
+      : data);
     if (workspace) {
       await copyFileToWorkspace(workspace, file, `handouts/imported-handouts/${safeName(file.name)}`);
       await saveHandout(workspace, text);
+      setStatus(`已载入右侧讲义：${file.name}`);
     }
   }
 
   async function handlePdfFileLoaded(file: File) {
     if (!workspace) return;
-    setStatus(`已导入 PDF：${file.name}，正在准备句子切分…`);
+    setStatus(`已导入 PDF：${file.name}，正在提取页面文本和句子...`);
     await copyFileToWorkspace(workspace, file, `sources/${safeName(file.name)}`);
-    setWorkspaceData((data) => data ? { ...data, settings: { ...data.settings, lastLeftPdfName: file.name } } : data);
+    setWorkspaceData((data) => data
+      ? { ...data, settings: { ...data.settings, lastLeftPdfName: file.name } }
+      : data);
   }
 
   async function handleSentenceIndexReady(index: PdfSentenceIndex) {
     if (!workspace) return;
     await writeSentenceCache(workspace, index.pdfId, index);
-    setStatus(`已完成句子切分：${index.pdfName} · ${index.pages.length} 页`);
-    // MVP: label first page in background to prove the pipeline; Codex should extend to queue all pages with cache skipping.
-    const firstUsefulPage = index.pages.find((page) => page.sentences.length > 0);
-    if (firstUsefulPage) {
+    const usefulPages = index.pages.filter((page) => page.sentences.length > 0 && page.pageText.trim());
+    setStatus(`句子缓存已写入：${index.pdfName}，共 ${index.pages.length} 页，开始后台标注。`);
+
+    let labeled = 0;
+    for (const page of usefulPages) {
       try {
         const labelResult = await requestLabelPage({
           courseTitle,
           pdfName: index.pdfName,
-          pageNumber: firstUsefulPage.pageNumber,
-          pageText: firstUsefulPage.pageText,
-          sentences: firstUsefulPage.sentences.slice(0, 18)
+          pageNumber: page.pageNumber,
+          pageText: page.pageText,
+          sentences: page.sentences.slice(0, 24)
         });
-        await writePageLabels(workspace, index.pdfId, firstUsefulPage.pageNumber, labelResult);
-        setStatus(`已生成第 ${firstUsefulPage.pageNumber} 页句子标签缓存`);
+        await writePageLabels(workspace, index.pdfId, page.pageNumber, labelResult);
+        labeled += 1;
+        setStatus(`后台标注中：${index.pdfName} 第 ${page.pageNumber} 页，已完成 ${labeled}/${usefulPages.length} 页。`);
       } catch (error) {
-        setStatus(`句子 label 暂未完成：${error instanceof Error ? error.message : String(error)}`);
+        setStatus(`第 ${page.pageNumber} 页标注暂未完成：${error instanceof Error ? error.message : String(error)}`);
       }
+      await new Promise((resolve) => window.setTimeout(resolve, 60));
     }
+
+    setStatus(`PDF 准备完成：${index.pdfName}。句子缓存和页面标签已写入工作区。`);
   }
 
   async function finalizeCourse() {
@@ -127,9 +171,15 @@ export default function App() {
     setSavedSummaryPath(null);
     try {
       const result = await requestFinalSummary({ courseTitle, workspaceName: workspace?.name, entries: studyLog });
-      setSummaryMarkdown(result.markdown);
+      setSummaryMarkdown(ensureFinalSummaryMarkdown({
+        courseTitle,
+        workspaceName: workspace?.name,
+        entries: studyLog,
+        generatedReviewMarkdown: result.markdown
+      }));
     } catch (error) {
-      setSummaryError(error instanceof Error ? error.message : String(error));
+      setSummaryMarkdown(buildFinalSummaryMarkdown({ courseTitle, workspaceName: workspace?.name, entries: studyLog }));
+      setSummaryError(`AI 总结暂时不可用，已先生成本地版。${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setSummaryLoading(false);
     }
@@ -139,6 +189,7 @@ export default function App() {
     if (!workspace || !summaryMarkdown.trim()) return;
     const saved = await saveExportMarkdown(workspace, summaryMarkdown);
     setSavedSummaryPath(saved);
+    setStatus(`最终总结已保存：${saved}`);
   }
 
   if (!workspace || !workspaceData || !settings) {
@@ -148,16 +199,31 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="brand"><span className="brand-mark">□</span><span className="brand-title">TwinPDF</span></div>
-        <input className="course-title-input" value={courseTitle} onChange={(event) => setCourseTitle(event.target.value)} aria-label="course title" />
+        <div className="brand">
+          <span className="brand-mark">T</span>
+          <span className="brand-title">TwinPDF</span>
+        </div>
+        <input
+          className="course-title-input"
+          value={courseTitle}
+          onChange={(event) => setCourseTitle(event.target.value)}
+          aria-label="课程名称"
+        />
         <span className="workspace-status">{status}</span>
-        <button className="header-help" title="help">?</button>
-        <button className="finalize-button" onClick={() => void finalizeCourse()}>✦ 结束课程总结</button>
+        <button className="finalize-button" onClick={() => void finalizeCourse()}>结束课程总结</button>
       </header>
 
       <main className="workspace" style={{ paddingBottom: settings.assistantHeight + 28 }}>
-        <PdfPane onSelectionChange={setSelected} onPdfFileLoaded={(file) => void handlePdfFileLoaded(file)} onSentenceIndexReady={(index) => void handleSentenceIndexReady(index)} />
-        <HandoutPane markdown={handoutMarkdown} onChange={(markdown) => setWorkspaceData({ ...workspaceData, handoutMarkdown: markdown })} onOpenFile={(file) => void handleRightFile(file)} />
+        <PdfPane
+          onSelectionChange={setSelected}
+          onPdfFileLoaded={(file) => void handlePdfFileLoaded(file)}
+          onSentenceIndexReady={(index) => void handleSentenceIndexReady(index)}
+        />
+        <HandoutPane
+          markdown={handoutMarkdown}
+          onChange={(markdown) => setWorkspaceData({ ...workspaceData, handoutMarkdown: markdown })}
+          onOpenFile={(file) => void handleRightFile(file)}
+        />
       </main>
 
       <AssistantDock
@@ -180,8 +246,8 @@ export default function App() {
         entries={studyLog}
         savedPath={savedSummaryPath}
         onClose={() => setSummaryOpen(false)}
-        onCopy={() => void navigator.clipboard.writeText(summaryMarkdown)}
-        onSave={() => void saveSummary()}
+        onCopy={() => navigator.clipboard.writeText(summaryMarkdown)}
+        onSave={saveSummary}
       />
     </div>
   );
