@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="850" viewBox="0 0 1200 850">
+  <rect width="1200" height="850" fill="#fbf8f2"/>
+  <rect x="42" y="42" width="1116" height="766" rx="28" fill="#fffdf9" stroke="#e6ddd1"/>
+  <text x="82" y="100" font-family="Inter,Arial" font-size="32" font-weight="800" fill="#1f1d1a">结束课程总结</text>
+  <rect x="82" y="135" width="410" height="610" rx="18" fill="#fff" stroke="#e1d7cc"/>
+  <rect x="520" y="135" width="590" height="610" rx="18" fill="#fff" stroke="#e1d7cc"/>
+  <text x="112" y="180" font-family="Inter,Arial" font-size="21" font-weight="700" fill="#1f1d1a">本次保存的问题</text>
+  <rect x="112" y="215" width="330" height="86" rx="12" fill="#fbf4e8" stroke="#e4d3bd"/>
+  <text x="132" y="250" font-family="Inter,Arial" font-size="15" fill="#4b4036">Page 7 · 为什么这是下界？</text>
+  <text x="132" y="276" font-family="Inter,Arial" font-size="14" fill="#7a6f64">The Evidence Lower Bound...</text>
+  <rect x="112" y="325" width="330" height="86" rx="12" fill="#fbf4e8" stroke="#e4d3bd"/>
+  <text x="132" y="360" font-family="Inter,Arial" font-size="15" fill="#4b4036">Page 8 · KL 散度怎么理解？</text>
+  <text x="132" y="386" font-family="Inter,Arial" font-size="14" fill="#7a6f64">The gap is the KL divergence...</text>
+  <text x="550" y="180" font-family="Inter,Arial" font-size="25" font-weight="800" fill="#1f1d1a">个人子讲义：变分推断与 ELBO</text>
+  <text x="550" y="230" font-family="Inter,Arial" font-size="18" font-weight="700" fill="#1f1d1a">## 本节核心问题</text>
+  <text x="550" y="270" font-family="Inter,Arial" font-size="16" fill="#4b4036">为什么我们要用一个可优化的下界来替代真实证据？</text>
+  <text x="550" y="330" font-family="Inter,Arial" font-size="18" font-weight="700" fill="#1f1d1a">## 我问过的问题</text>
+  <text x="550" y="370" font-family="Inter,Arial" font-size="16" fill="#4b4036">1. ELBO 为什么 tractable？</text>
+  <text x="550" y="405" font-family="Inter,Arial" font-size="16" fill="#4b4036">2. 最大化 ELBO 和最小化 KL 有什么关系？</text>
+  <rect x="790" y="72" width="130" height="42" rx="12" fill="#fbf4e8" stroke="#d8c8b4"/>
+  <text x="820" y="99" font-family="Inter,Arial" font-size="15" fill="#3b332c">复制全文</text>
+  <rect x="934" y="72" width="150" height="42" rx="12" fill="#1f1d1a"/>
+  <text x="965" y="99" font-family="Inter,Arial" font-size="15" font-weight="700" fill="#fff">导出 Markdown</text>
+</svg>

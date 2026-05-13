@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+env.local
+*.log
+.DS_Store
+# Keep user study workspaces outside this repo.
+/workspace/
+STATE_FOR_RESUME.md
+FINAL_DONE.md

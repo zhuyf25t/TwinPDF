@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="850" viewBox="0 0 1200 850">
+  <rect width="1200" height="850" fill="#fbf8f2"/>
+  <rect x="44" y="38" width="1112" height="774" rx="28" fill="#fffdf9" stroke="#e6ddd1"/>
+  <text x="92" y="102" font-family="Inter,Arial" font-size="30" font-weight="700" fill="#241f1b">TwinPDF</text>
+  <rect x="250" y="180" width="700" height="470" rx="26" fill="#ffffff" stroke="#e3d6c7"/>
+  <text x="330" y="255" font-family="Inter,Arial" font-size="34" font-weight="800" fill="#1f1d1a">选择学习工作区</text>
+  <text x="330" y="305" font-family="Inter,Arial" font-size="18" fill="#6d6258">TwinPDF 会把 PDF、讲义、句子切分、AI 问答、个人子讲义和最终总结保存在这个文件夹中。</text>
+  <rect x="330" y="350" width="250" height="54" rx="14" fill="#1f1d1a"/>
+  <text x="373" y="384" font-family="Inter,Arial" font-size="18" font-weight="700" fill="#fff">选择本地文件夹</text>
+  <rect x="596" y="350" width="210" height="54" rx="14" fill="#fbf4e8" stroke="#d8c8b4"/>
+  <text x="634" y="384" font-family="Inter,Arial" font-size="18" fill="#4b4036">继续上次工作区</text>
+  <rect x="330" y="450" width="480" height="132" rx="16" fill="#fbf8f2" stroke="#e6ddd1"/>
+  <text x="360" y="490" font-family="monospace" font-size="17" fill="#5b5047">/sources    /handouts    /memory</text>
+  <text x="360" y="525" font-family="monospace" font-size="17" fill="#5b5047">/exports    /cache/sentences</text>
+  <text x="360" y="560" font-family="monospace" font-size="17" fill="#5b5047">twinpdf.workspace.json</text>
+  <text x="330" y="625" font-family="Inter,Arial" font-size="15" fill="#8a7d70">API key 只在 env.local / 后端；学习历史保存在你选择的文件夹里。</text>
+</svg>
