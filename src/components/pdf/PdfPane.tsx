@@ -7,9 +7,21 @@ import { boundPageText, buildNearbyContext, findSentenceForSelection, makePdfId,
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 type PdfPaneProps = {
-  onSelectionChange: (selection: SelectedContext) => void;
-  onPdfFileLoaded: (file: File) => void;
-  onSentenceIndexReady: (index: PdfSentenceIndex) => void;
+  title?: string;
+  openLabel?: string;
+  emptyFileName?: string;
+  paneClassName?: string;
+  selectionSource?: SelectedContext["source"];
+  enableSentenceIndex?: boolean;
+  showStatus?: boolean;
+  showSelectTool?: boolean;
+  showThumbnails?: boolean;
+  showZoomControls?: boolean;
+  initialZoom?: number;
+  onSelectionChange?: (selection: SelectedContext) => void;
+  onPdfFileLoaded?: (file: File) => void;
+  onSentenceIndexReady?: (index: PdfSentenceIndex) => void;
+  onPageTextReady?: (payload: { fileName: string; pageNumber: number; pageText: string }) => void;
 };
 
 type PdfDoc = Awaited<ReturnType<typeof pdfjsLib.getDocument>["promise"]>;
@@ -37,7 +49,23 @@ type PdfTextContentLike = {
 
 const sampleText = samplePageText();
 
-export function PdfPane({ onSelectionChange, onPdfFileLoaded, onSentenceIndexReady }: PdfPaneProps) {
+export function PdfPane({
+  title = "英文课件",
+  openLabel = "打开",
+  emptyFileName = "未打开 PDF",
+  paneClassName = "",
+  selectionSource = "left-pdf",
+  enableSentenceIndex = true,
+  showStatus = false,
+  showSelectTool = false,
+  showThumbnails = false,
+  showZoomControls = false,
+  initialZoom = 0.6,
+  onSelectionChange,
+  onPdfFileLoaded,
+  onSentenceIndexReady,
+  onPageTextReady
+}: PdfPaneProps) {
   const [pdf, setPdf] = useState<PdfDoc | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageState, setPageState] = useState<PageState>({
@@ -45,8 +73,8 @@ export function PdfPane({ onSelectionChange, onPdfFileLoaded, onSentenceIndexRea
     pageNumber: 7,
     sentences: splitIntoSentences(sampleText, 7)
   });
-  const [fileName, setFileName] = useState("未打开 PDF");
-  const [zoom, setZoom] = useState(0.6);
+  const [fileName, setFileName] = useState(emptyFileName);
+  const [zoom, setZoom] = useState(initialZoom);
   const [indexStatus, setIndexStatus] = useState("等待导入 PDF");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textLayerRef = useRef<HTMLDivElement | null>(null);
@@ -72,6 +100,7 @@ export function PdfPane({ onSelectionChange, onPdfFileLoaded, onSentenceIndexRea
         if (!page || renderRunRef.current !== renderRun) return;
         pageCacheRef.current.set(page.pageNumber, page);
         setPageState(page);
+        onPageTextReady?.({ fileName, pageNumber: page.pageNumber, pageText: page.pageText });
         setIndexStatus(page.pageText
           ? `第 ${page.pageNumber} 页文本已就绪，可选中提问`
           : `第 ${page.pageNumber} 页未提取到文字，可能是扫描版 PDF`);
@@ -90,7 +119,7 @@ export function PdfPane({ onSelectionChange, onPdfFileLoaded, onSentenceIndexRea
     setFileName(file.name);
     setIndexStatus(`正在读取 PDF：${file.name}`);
     pageCacheRef.current.clear();
-    onPdfFileLoaded(file);
+    onPdfFileLoaded?.(file);
 
     try {
       const buffer = await file.arrayBuffer();
@@ -107,17 +136,21 @@ export function PdfPane({ onSelectionChange, onPdfFileLoaded, onSentenceIndexRea
       const doc = await loadingTask.promise;
       setPdf(doc);
       setPageNumber(1);
-      setIndexStatus(`PDF 已打开，共 ${doc.numPages} 页；正在提取全文句子...`);
+      setIndexStatus(enableSentenceIndex
+        ? `PDF 已打开，共 ${doc.numPages} 页；正在提取全文句子...`
+        : `PDF 已打开，共 ${doc.numPages} 页`);
 
-      void buildSentenceIndex(doc, file, ({ pageNumber: currentPage, pageCount: totalPages, sentenceCount }) => {
-        setIndexStatus(`正在提取句子：第 ${currentPage}/${totalPages} 页，已得到 ${sentenceCount} 句`);
-      })
-        .then((index) => {
-          onSentenceIndexReady(index);
-          const sentenceCount = index.pages.reduce((sum, page) => sum + page.sentences.length, 0);
-          setIndexStatus(`句子切分完成：${index.pages.length} 页，${sentenceCount} 句；已准备写入工作区并后台标注`);
+      if (enableSentenceIndex && onSentenceIndexReady) {
+        void buildSentenceIndex(doc, file, ({ pageNumber: currentPage, pageCount: totalPages, sentenceCount }) => {
+          setIndexStatus(`正在提取句子：第 ${currentPage}/${totalPages} 页，已得到 ${sentenceCount} 句`);
         })
-        .catch((err) => setIndexStatus(`句子切分失败：${errorMessage(err)}`));
+          .then((index) => {
+            onSentenceIndexReady(index);
+            const sentenceCount = index.pages.reduce((sum, page) => sum + page.sentences.length, 0);
+            setIndexStatus(`句子切分完成：${index.pages.length} 页，${sentenceCount} 句；已准备写入工作区并后台标注`);
+          })
+          .catch((err) => setIndexStatus(`句子切分失败：${errorMessage(err)}`));
+      }
     } catch (err) {
       setIndexStatus(`PDF 加载失败：${errorMessage(err)}`);
     }
@@ -129,13 +162,13 @@ export function PdfPane({ onSelectionChange, onPdfFileLoaded, onSentenceIndexRea
       if (!text) return;
 
       const sentence = findSentenceForSelection(pageState.sentences, text);
-      onSelectionChange({
+      onSelectionChange?.({
         selectedText: text,
         pageLabel: `第 ${pageState.pageNumber} 页`,
         pageNumber: pageState.pageNumber,
         pageText: pageState.pageText,
         nearbyContext: buildNearbyContext(pageState.pageText, text),
-        source: "left-pdf",
+        source: selectionSource,
         sentenceId: sentence?.id
       });
       setIndexStatus(`已选中第 ${pageState.pageNumber} 页文本，可直接提问`);
@@ -143,11 +176,12 @@ export function PdfPane({ onSelectionChange, onPdfFileLoaded, onSentenceIndexRea
   }
 
   return (
-    <section className="pane pdf-pane">
+    <section className={`pane pdf-pane ${paneClassName}`}>
       <div className="pane-toolbar">
         <div className="toolbar-group toolbar-left">
+          <strong>{title}</strong>
           <label className="toolbar-button">
-            打开课件
+            {openLabel}
             <input type="file" accept="application/pdf,.pdf" hidden onChange={(event) => {
               const file = event.target.files?.[0];
               if (file) void loadFile(file);
@@ -160,25 +194,31 @@ export function PdfPane({ onSelectionChange, onPdfFileLoaded, onSentenceIndexRea
           <button className="icon-button" aria-label="上一页" title="上一页" disabled={!pdf || pageNumber <= 1} onClick={() => setPageNumber((p) => Math.max(1, p - 1))}>‹</button>
           <span className="page-pill">{displayPageNumber} / {pageCount}</span>
           <button className="icon-button" aria-label="下一页" title="下一页" disabled={!pdf || pageNumber >= pageCount} onClick={() => setPageNumber((p) => Math.min(pageCount, p + 1))}>›</button>
-          <button className="icon-button" aria-label="缩小" title="缩小" onClick={() => setZoom((z) => Math.max(0.6, Number((z - 0.1).toFixed(1))))}>−</button>
-          <span className="page-pill">{Math.round(zoom * 100)}%</span>
-          <button className="icon-button" aria-label="放大" title="放大" onClick={() => setZoom((z) => Math.min(2, Number((z + 0.1).toFixed(1))))}>+</button>
-          <span className="select-tool-pill">选择文本</span>
+          {showZoomControls && (
+            <>
+              <button className="icon-button" aria-label="缩小" title="缩小" onClick={() => setZoom((z) => Math.max(0.6, Number((z - 0.1).toFixed(1))))}>−</button>
+              <span className="page-pill">{Math.round(zoom * 100)}%</span>
+              <button className="icon-button" aria-label="放大" title="放大" onClick={() => setZoom((z) => Math.min(2, Number((z + 0.1).toFixed(1))))}>+</button>
+            </>
+          )}
+          {showSelectTool && <span className="select-tool-pill">选择文本</span>}
         </div>
       </div>
-      <div className="pdf-body">
-        <aside className="thumb-rail" aria-label="页面缩略图">
-          {thumbPages.map((n) => (
-            <div key={n} className={`thumb ${n === displayPageNumber ? "active" : ""}`}>
-              <div className="thumb-box" aria-hidden="true">
-                <span />
-                <span />
-                <span />
+      <div className={`pdf-body ${showThumbnails ? "with-thumbs" : "no-thumbs"}`}>
+        {showThumbnails && (
+          <aside className="thumb-rail" aria-label="页面缩略图">
+            {thumbPages.map((n) => (
+              <div key={n} className={`thumb ${n === displayPageNumber ? "active" : ""}`}>
+                <div className="thumb-box" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+                {n}
               </div>
-              {n}
-            </div>
-          ))}
-        </aside>
+            ))}
+          </aside>
+        )}
         <div className="pdf-page-wrap" onMouseUp={captureSelection} onKeyUp={captureSelection}>
           {pdf ? (
             <div className="pdf-rendered-page">
@@ -190,7 +230,7 @@ export function PdfPane({ onSelectionChange, onPdfFileLoaded, onSentenceIndexRea
           )}
         </div>
       </div>
-      <div className="status-strip">{indexStatus}</div>
+      <div className={`status-strip ${showStatus ? "" : "visually-hidden-status"}`}>{indexStatus}</div>
     </section>
   );
 }

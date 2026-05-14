@@ -1,9 +1,9 @@
 .assistant-dock {
   position: fixed;
-  left: 50%;
+  right: 18px;
   bottom: 18px;
-  transform: translateX(-50%);
-  width: min(980px, 72vw);
+  transform: none;
+  width: min(430px, calc(100vw - 28px));
   max-width: calc(100vw - 28px);
   display: flex;
   flex-direction: column;
@@ -18,7 +18,7 @@
 }
 
 .dock-collapsed {
-  width: min(760px, 62vw);
+  width: min(330px, calc(100vw - 28px));
 }
 
 .dock-collapsed .dock-resize-handle {
@@ -26,24 +26,24 @@
 }
 
 .dock-collapsed .assistant-header {
-  min-height: 48px;
+  min-height: 44px;
   border-bottom: 0;
 }
 
 .dock-resize-handle {
-  flex: 0 0 5px;
+  flex: 0 0 4px;
   cursor: ns-resize;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: rgba(248, 234, 210, 0.78);
+  background: transparent;
   touch-action: none;
 }
 
 .dock-resize-handle::before {
   content: "";
-  width: 68px;
-  height: 3px;
+  width: 58px;
+  height: 2px;
   border-radius: 999px;
   background: var(--border-strong);
 }
@@ -54,7 +54,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   padding: 6px 12px;
   border-bottom: 1px solid var(--border);
   background: rgba(255, 253, 248, 0.98);
@@ -134,10 +134,10 @@
 .assistant-command-row {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  padding: 7px 12px 5px;
+  gap: 5px 7px;
+  padding: 6px 10px 4px;
   border-bottom: 1px solid rgba(230, 221, 209, 0.62);
 }
 
@@ -145,7 +145,7 @@
 .lock-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -159,7 +159,7 @@
   border-radius: 999px;
   background: var(--surface);
   padding: 5px 9px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-soft);
   white-space: nowrap;
   min-width: 0;
@@ -178,7 +178,7 @@
 }
 
 .save-chip {
-  justify-self: end;
+  justify-self: start;
 }
 
 .success-pill {
@@ -189,7 +189,7 @@
   background: var(--success-soft);
   border: 1px solid rgba(22, 130, 68, 0.25);
   border-radius: 999px;
-  padding: 5px 9px;
+  padding: 5px 8px;
   font-size: 12px;
   font-weight: 760;
   white-space: nowrap;
@@ -199,23 +199,19 @@
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: minmax(70px, 0.82fr) minmax(68px, 1fr);
-  gap: 8px;
-  padding: 8px 12px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(64px, 0.72fr) minmax(86px, 1fr);
+  gap: 6px;
+  padding: 6px 10px;
   overflow: hidden;
-}
-
-.answer-zone {
-  grid-column: 1 / -1;
 }
 
 .assistant-box {
   min-height: 0;
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--radius);
-  background: var(--paper);
-  padding: 8px 10px;
+  background: transparent;
+  padding: 4px 2px;
   display: flex;
   flex-direction: column;
 }
@@ -225,7 +221,7 @@
   font-size: 12px;
   font-weight: 820;
   color: var(--text);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -255,7 +251,7 @@
   padding: 7px 9px;
   line-height: 1.5;
   min-height: 34px;
-  max-height: 62px;
+  max-height: 74px;
   overflow: auto;
 }
 
@@ -269,7 +265,7 @@
 
 .answer-text {
   flex: 1 1 auto;
-  min-height: 52px;
+  min-height: 72px;
   line-height: 1.68;
   overflow: auto;
   color: var(--text-soft);
@@ -284,9 +280,9 @@
 }
 
 .dock-compact .answer-text {
-  height: 48px;
-  min-height: 48px;
-  max-height: 48px;
+  height: 72px;
+  min-height: 72px;
+  max-height: 72px;
   line-height: 1.55;
   overflow: hidden;
 }
@@ -312,10 +308,10 @@
 .ask-row {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 74px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 46px;
+  gap: 6px;
   align-items: stretch;
-  padding: 0 12px 10px;
+  padding: 0 10px 10px;
 }
 
 .ask-row textarea {
@@ -325,7 +321,7 @@
   resize: vertical;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 10px 12px;
+  padding: 9px 10px;
   background: var(--paper);
   color: var(--text);
   outline: none;
@@ -342,7 +338,7 @@
   border-radius: var(--radius);
   background: var(--accent-strong);
   color: #fffdf9;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 850;
 }
 

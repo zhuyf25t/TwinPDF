@@ -8,6 +8,7 @@ Scores are intentionally strict. DONE is not allowed while any item is below 8, 
 | 2 after dock layout | 8.7 | 8.6 | 9.1 | 8.8 | 8.5 | 8.9 | 8.8 | 9.1 | 8.81 | Continue |
 | 3 bottom layout pass | 8.6 | 7.8 | 9.2 | 9.0 | 8.4 | 8.9 | 8.9 | 9.2 | 8.75 | Rejected by latest review |
 | 4 fixed overlay pass | 9.1 | 9.0 | 9.2 | 9.0 | 9.0 | 8.9 | 8.9 | 9.2 | 9.04 | DONE allowed |
+| 5 minimal dual-PDF pass | 9.3 | 9.2 | 9.2 | 9.0 | 9.4 | 8.9 | 8.8 | 9.4 | 9.15 | DONE allowed |
 
 ## Round 1 Notes
 
@@ -22,3 +23,10 @@ Scores are intentionally strict. DONE is not allowed while any item is below 8, 
 - AI Assist non-obstruction reaches 9 because collapsed/compact/expanded states are tested, drag does not re-layout the workspace, and collapsed mode leaves only a slim strip.
 - Workspace memory remains 8.9 rather than 9+ because automated browser smoke still uses a File System Access API stub; the app code and unit tests cover the real API path.
 - Average is above 8.8 and all categories are above 8, so DONE is allowed by the rubric.
+
+## Round 5 Notes
+
+- The latest user correction rejected visual clutter and clarified that the right pane is a second PDF, not Markdown.
+- Reading comfort improves because both panes are now PDF readers with no default thumbnail rails and only essential page controls.
+- AI Assist non-obstruction improves because collapsed is now the default and the expanded helper is a small bottom-right card.
+- Visual simplicity improves because duplicate translation panels, extra mode chips, visible status strips, thumbnails, and zoom buttons are removed from the default view.

@@ -6,13 +6,11 @@ import { AssistantDockHandle } from "./AssistantDockHandle";
 import { AssistantHeader } from "./AssistantHeader";
 import { AssistantInput } from "./AssistantInput";
 import { AssistantLocks } from "./AssistantLocks";
-import { BrowserTranslationSurface } from "./BrowserTranslationSurface";
 import {
   assistantHeightStorageKey,
   assistantModeStorageKey,
   emptyAnswer,
   emptySelection,
-  emptyTranslation,
   friendlyError,
   heightForDockMode,
   makeFingerprint,
@@ -99,7 +97,7 @@ export function AssistantDock({
 
   function setDockMode(nextMode: AssistantDockMode) {
     const nextHeight = nextMode === "expanded"
-      ? Math.max(settings.assistantHeight, 420)
+      ? Math.min(Math.max(settings.assistantHeight, 360), 380)
       : nextMode === "compact"
         ? Math.min(Math.max(settings.assistantHeight, 300), 320)
         : settings.assistantHeight;
@@ -298,11 +296,6 @@ export function AssistantDock({
               hasSelection={hasSelection}
               selectedText={selectedText}
               onCopy={() => copyText(hasSelection ? rawSelectedText : "")}
-            />
-            <BrowserTranslationSurface
-              hasSelection={hasSelection}
-              text={translationSurface}
-              emptyText={emptyTranslation}
             />
             <AiAnswerPanel
               answerState={answerState}

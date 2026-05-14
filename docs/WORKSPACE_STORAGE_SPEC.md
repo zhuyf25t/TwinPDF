@@ -63,7 +63,7 @@ Not allowed:
 ```json
 {
   "assistantHeight": 300,
-  "assistantMode": "compact",
+  "assistantMode": "collapsed",
   "inputLocked": false,
   "autoAddLocked": false,
   "lastLeftPdfName": "lecture8.pdf",

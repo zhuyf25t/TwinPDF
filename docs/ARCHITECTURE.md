@@ -6,7 +6,7 @@ TwinPDF is a local web app with a small backend.
 
 ```text
 Browser UI (React/Vite)
-  ├─ PDF rendering and text extraction
+  ├─ dual PDF rendering and text extraction
   ├─ local workspace folder via File System Access API
   ├─ selected-text assistant dock
   └─ ordinary HTML translation surface
@@ -37,7 +37,6 @@ The user wants history saved in a selected local directory, not hidden in browse
 src/App.tsx
 src/components/workspace/WorkspaceGate.tsx
 src/components/pdf/PdfPane.tsx
-src/components/handout/HandoutPane.tsx
 src/components/assistant/AssistantDock.tsx
 src/components/summary/FinalSummaryModal.tsx
 src/lib/workspace/*
@@ -66,13 +65,13 @@ User selects text in PDF
   ↓
 PdfPane emits SelectedContext
   ↓
-AssistantDock updates Selected Text + Browser Translation Surface
+AssistantDock updates the selected-text surface, which is ordinary browser-translatable HTML
   ↓
 User sends question / quick action
   ↓
 Frontend calls /api/ai/assist
   ↓
-Server builds DeepSeek prompt with selected text, page context, labels, right-handout excerpt, history
+Server builds DeepSeek prompt with selected text, page context, labels, right PDF page excerpt, history
   ↓
 Server returns answer
   ↓

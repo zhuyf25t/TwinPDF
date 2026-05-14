@@ -19,7 +19,7 @@ Codex must not declare DONE until every item is checked.
 
 ## PDF and handout
 - [x] Left English PDF can load.
-- [x] Right handout / Markdown can load.
+- [x] Right Chinese guide PDF can load as a second PDF reader.
 - [x] Real PDFs from `C:\Users\Laptop\Desktop\网络学堂\[11] 计算机系统概论\lec8` have been tested.
 - [x] Page text extraction works at least for text PDFs.
 - [x] Sentence cache files are written.
@@ -49,6 +49,8 @@ Codex must not declare DONE until every item is checked.
 - [x] UI is Chinese by default.
 - [x] UI uses the warm ivory / soft beige TwinPDF craft style, not the earlier blue-white demo style.
 - [x] Left/right reading panes are stable, independently scrolling, and do not overflow on the real smoke viewport.
+- [x] The right pane is a real PDF reader, not a Markdown handout view.
+- [x] Default reading UI is minimal: no thumbnail rails, no zoom controls, no visible debug/status strip.
 - [x] AI Assist is a fixed bottom dock overlay, can collapse, and no longer compresses the reading panes.
 - [x] `docs/qa/PRODUCT_SCORE.md` final score has every category >= 8 and average >= 8.8.
 - [x] Three UI/UX self-iteration rounds are recorded under `docs/qa/`.

@@ -19,7 +19,7 @@ export function AssistantInput({ question, loading, onQuestionChange, onSubmit }
         }}
       />
       <button className="send-button" disabled={loading} onClick={onSubmit}>
-        {loading ? "..." : "发送"}
+        {loading ? "..." : "↑"}
       </button>
     </div>
   );

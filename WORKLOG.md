@@ -66,3 +66,12 @@ Next Codex run must execute `docs/CODEX_GOAL_PROMPT.md`, install deps, run typec
 - Split assistant and handout UI into smaller components and added PDF handout cleanup so the right pane reads more like a lecture note.
 - Hardened smoke coverage to assert fixed positioning, `ns-resize` drag handle, no horizontal document scroll, unchanged workspace height during drag/collapse, and collapsed height under 60px.
 - Real PDF smoke passed with `SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/round-fixed-overlay npm run smoke:real-pdf`.
+
+## Minimal dual-PDF correction - 2026-05-14
+- Reinterpreted the latest product correction as a stricter minimal-design pass: fewer buttons, fewer boxes, no right-side Markdown reading surface.
+- Replaced the right pane with a second `PdfPane`, so `lec08_vm_malloc_super_detailed_guide.pdf` renders as a PDF canvas/text layer.
+- Removed the active Markdown handout UI and PDF-to-Markdown extraction path.
+- Hid thumbnail rails, zoom controls, and visible status strips by default.
+- Collapsed AI Assist by default, reduced it to a small bottom-right card, merged browser translation into the selected-text HTML surface, and reduced mode controls to one `解释` action.
+- Updated smoke to use `.left-pdf-pane` and `.right-pdf-pane`, assert right PDF canvas/text rendering, and verify the dock does not cover toolbars or upper reading areas.
+- Final minimal smoke passed with `SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/minimal-pass npm run smoke:real-pdf`.

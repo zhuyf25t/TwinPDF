@@ -1,19 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { AssistantDock } from "./components/assistant/AssistantDock";
-import { HandoutPane } from "./components/handout/HandoutPane";
 import { PdfPane } from "./components/pdf/PdfPane";
 import { FinalSummaryModal } from "./components/summary/FinalSummaryModal";
 import { WorkspaceGate } from "./components/workspace/WorkspaceGate";
 import { requestFinalSummary, requestLabelPage } from "./lib/ai/client";
 import { buildFinalSummaryMarkdown, ensureFinalSummaryMarkdown } from "./lib/markdown";
-import { extractPdfTextAsMarkdown } from "./lib/pdf/extractPdf";
 import { buildNearbyContext } from "./lib/pdf/sentence";
 import {
   copyFileToWorkspace,
   loadWorkspaceData,
   safeName,
   saveExportMarkdown,
-  saveHandout,
   saveSettings,
   saveStudyLog,
   writePageLabels,
@@ -46,10 +43,10 @@ export default function App() {
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [savedSummaryPath, setSavedSummaryPath] = useState<string | null>(null);
   const [status, setStatus] = useState("请选择学习工作区");
+  const [rightPdfContext, setRightPdfContext] = useState("");
 
   const settings = workspaceData?.settings;
   const studyLog = workspaceData?.studyLog ?? [];
-  const handoutMarkdown = workspaceData?.handoutMarkdown ?? "";
 
   const normalizedSelected = useMemo<SelectedContext>(() => ({
     ...selected,
@@ -71,17 +68,6 @@ export default function App() {
       setStatus(`保存学习记录失败：${error instanceof Error ? error.message : String(error)}`);
     });
   }, [workspace, workspaceData?.studyLog]);
-
-  useEffect(() => {
-    if (!workspace || !workspaceData) return;
-    const timer = window.setTimeout(() => {
-      void saveHandout(workspace, workspaceData.handoutMarkdown).catch((error) => {
-        console.error(error);
-        setStatus(`保存讲义失败：${error instanceof Error ? error.message : String(error)}`);
-      });
-    }, 500);
-    return () => window.clearTimeout(timer);
-  }, [workspace, workspaceData?.handoutMarkdown]);
 
   async function openWorkspace(nextWorkspace: WorkspaceRef) {
     const data = await loadWorkspaceData(nextWorkspace);
@@ -110,20 +96,13 @@ export default function App() {
     if (workspace) await saveStudyLog(workspace, nextEntries);
   }
 
-  async function handleRightFile(file: File) {
-    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-    const text = isPdf
-      ? await extractPdfTextAsMarkdown(file, ({ pageNumber, pageCount }) => {
-        setStatus(`正在提取右侧讲义 PDF：第 ${pageNumber}/${pageCount} 页`);
-      })
-      : await file.text();
+  async function handleRightPdfFileLoaded(file: File) {
     setWorkspaceData((data) => data
-      ? { ...data, handoutMarkdown: text, settings: { ...data.settings, lastRightHandoutName: file.name } }
+      ? { ...data, settings: { ...data.settings, lastRightHandoutName: file.name } }
       : data);
     if (workspace) {
       await copyFileToWorkspace(workspace, file, `handouts/imported-handouts/${safeName(file.name)}`);
-      await saveHandout(workspace, text);
-      setStatus(`已载入右侧讲义：${file.name}`);
+      setStatus(`已载入右侧讲义 PDF：${file.name}`);
     }
   }
 
@@ -215,15 +194,28 @@ export default function App() {
 
       <main className="workspace">
         <PdfPane
+          title="英文课件"
+          openLabel="打开"
+          emptyFileName="左侧 PDF"
+          paneClassName="left-pdf-pane"
+          selectionSource="left-pdf"
+          initialZoom={0.54}
           onSelectionChange={setSelected}
           onPdfFileLoaded={(file) => void handlePdfFileLoaded(file)}
           onSentenceIndexReady={(index) => void handleSentenceIndexReady(index)}
         />
-        <HandoutPane
-          markdown={handoutMarkdown}
-          fileName={workspaceData.settings.lastRightHandoutName}
-          onChange={(markdown) => setWorkspaceData({ ...workspaceData, handoutMarkdown: markdown })}
-          onOpenFile={(file) => void handleRightFile(file)}
+        <PdfPane
+          title="中文讲义"
+          openLabel="打开"
+          emptyFileName="右侧 PDF"
+          paneClassName="right-pdf-pane"
+          selectionSource="right-handout"
+          enableSentenceIndex={false}
+          initialZoom={0.9}
+          onPdfFileLoaded={(file) => void handleRightPdfFileLoaded(file)}
+          onPageTextReady={({ fileName, pageNumber, pageText }) => {
+            setRightPdfContext(`${fileName} 第 ${pageNumber} 页\n${pageText}`.slice(0, 5000));
+          }}
         />
       </main>
 
@@ -231,7 +223,7 @@ export default function App() {
         courseTitle={courseTitle}
         workspaceName={workspace.name}
         selected={normalizedSelected}
-        rightNoteContext={handoutMarkdown}
+        rightNoteContext={rightPdfContext}
         recentEntries={studyLog}
         settings={settings}
         onSettingsChange={updateSettings}

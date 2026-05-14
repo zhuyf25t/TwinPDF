@@ -20,7 +20,7 @@ export type AppSettings = {
 
 export const defaultSettings: AppSettings = {
   assistantHeight: 300,
-  assistantMode: "compact",
+  assistantMode: "collapsed",
   inputLocked: false,
   autoAddLocked: false
 };

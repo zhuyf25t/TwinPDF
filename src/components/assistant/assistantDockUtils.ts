@@ -55,7 +55,7 @@ export function clampDockHeight(height: number) {
 
 export function heightForDockMode(height: number, dockMode: AssistantDockMode) {
   if (dockMode === "collapsed") return 52;
-  if (dockMode === "expanded") return Math.max(340, clampDockHeight(height));
+  if (dockMode === "expanded") return Math.min(380, Math.max(320, clampDockHeight(height)));
   return Math.min(
     assistantCompactMaxHeight,
     Math.max(assistantCompactMinHeight, Number.isFinite(height) ? height : assistantDefaultHeight)

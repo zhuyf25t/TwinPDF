@@ -1,5 +1,4 @@
 import type { AppSettings, AssistMode } from "../../shared/contracts";
-import { modeLabels } from "./assistantDockUtils";
 
 type AssistantLocksProps = {
   mode: AssistMode;
@@ -27,29 +26,26 @@ export function AssistantLocks({
   return (
     <div className="mode-row assistant-command-row">
       <div className="mode-group">
-        {(Object.keys(modeLabels) as AssistMode[]).map((item) => (
-          <button
-            key={item}
-            className={`mode-chip ${mode === item ? "active" : ""}`}
-            onClick={() => onSubmitMode(item)}
-            disabled={loading}
-          >
-            {modeLabels[item]}
-          </button>
-        ))}
+        <button
+          className={`mode-chip ${mode === "explain" ? "active" : ""}`}
+          onClick={() => onSubmitMode("explain")}
+          disabled={loading}
+        >
+          解释
+        </button>
       </div>
       <div className="lock-group">
         <button
           className={`tiny-lock ${settings.inputLocked ? "active" : ""}`}
           onClick={() => onSettingsPatch({ inputLocked: !settings.inputLocked })}
         >
-          {settings.inputLocked ? "输入已锁" : "输入不锁"}
+          {settings.inputLocked ? "问锁" : "问不锁"}
         </button>
         <button
           className={`tiny-lock ${settings.autoAddLocked ? "active" : ""}`}
           onClick={() => onSettingsPatch({ autoAddLocked: !settings.autoAddLocked })}
         >
-          {settings.autoAddLocked ? "自动加入" : "手动加入"}
+          {settings.autoAddLocked ? "自动存" : "手动存"}
         </button>
       </div>
       <button
@@ -57,7 +53,7 @@ export function AssistantLocks({
         onClick={onAddCurrentAnswer}
         disabled={!hasAnswer || loading || saving || alreadyAdded}
       >
-        {saving ? "加入中..." : alreadyAdded ? "已加入" : "加入个人子讲义"}
+        {saving ? "..." : alreadyAdded ? "已加入" : "加入"}
       </button>
       {alreadyAdded && <span className="success-pill">加入成功</span>}
     </div>

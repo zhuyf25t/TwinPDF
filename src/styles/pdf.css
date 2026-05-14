@@ -2,15 +2,19 @@
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 74px minmax(0, 1fr);
   overflow: hidden;
+}
+
+.pdf-body.no-thumbs {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .thumb-rail {
   border-right: 1px solid var(--border);
-  padding: 12px 9px;
+  padding: 10px 7px;
   overflow: auto;
-  background: #f7efe4;
+  background: rgba(247, 242, 234, 0.7);
 }
 
 .thumb {
@@ -21,7 +25,7 @@
 }
 
 .thumb-box {
-  height: 72px;
+  height: 58px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: linear-gradient(180deg, #fffdf9, #fffaf1);
@@ -56,18 +60,24 @@
 .pdf-page-wrap {
   overflow: auto;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-start;
-  padding: 22px 18px 34px;
+  padding: 18px 16px 28px;
   background:
     linear-gradient(180deg, rgba(255, 253, 249, 0.48), rgba(242, 235, 225, 0.78)),
     #f0ebe3;
 }
 
+.pdf-body.no-thumbs .pdf-page-wrap {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
 .pdf-rendered-page {
   position: relative;
+  margin: 0 auto;
   background: var(--paper);
-  box-shadow: 0 16px 34px rgba(63, 49, 33, 0.16);
+  box-shadow: 0 10px 24px rgba(63, 49, 33, 0.12);
 }
 
 .pdf-rendered-page canvas {

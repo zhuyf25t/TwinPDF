@@ -174,22 +174,21 @@
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
-.pdf-pane,
-.handout-pane {
+.pdf-pane {
   border-radius: var(--radius-lg);
 }
 
 .pane-toolbar {
   flex: 0 0 auto;
-  min-height: 46px;
+  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: nowrap;
   gap: 7px;
-  padding: 7px 10px;
+  padding: 5px 10px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface-muted);
+  background: rgba(255, 253, 248, 0.82);
 }
 
 .pane-toolbar strong {
@@ -233,11 +232,11 @@
 }
 
 .page-pill {
-  min-width: 56px;
+  min-width: 52px;
   text-align: center;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 6px 9px;
+  padding: 5px 8px;
   background: var(--surface);
   color: var(--text-soft);
   font-size: 13px;
@@ -267,6 +266,15 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.visually-hidden-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 @media (max-width: 1119px) {

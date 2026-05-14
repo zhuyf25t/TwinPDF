@@ -28,19 +28,28 @@ async function main() {
   await page.locator(".workspace-gate .primary-button").click();
   await expect(page.locator(".app-shell")).toBeVisible({ timeout: 15_000 });
 
-  await page.locator(".pdf-pane input[type=file]").setInputFiles(leftPdf);
-  await expect(page.locator(".file-name").first()).toContainText("lec08-vm-malloc.pdf", { timeout: 15_000 });
-  await page.waitForSelector(".pdf-text-layer span", { timeout: 60_000 });
+  await expect(page.locator(".left-pdf-pane.pdf-pane")).toBeVisible();
+  await expect(page.locator(".right-pdf-pane.pdf-pane")).toBeVisible();
+
+  await page.locator(".left-pdf-pane input[type=file]").setInputFiles(leftPdf);
+  await expect(page.locator(".left-pdf-pane .file-name")).toContainText("lec08-vm-malloc.pdf", { timeout: 15_000 });
+  await page.waitForSelector(".left-pdf-pane .pdf-text-layer span", { timeout: 60_000 });
   await page.waitForFunction(() => {
-    const text = document.querySelector(".status-strip")?.textContent || "";
+    const text = document.querySelector(".left-pdf-pane .status-strip")?.textContent || "";
     return /句子切分完成|PDF 准备完成|后台标注/.test(text);
   }, undefined, { timeout: 120_000 });
 
-  await page.locator(".handout-pane input[type=file]").setInputFiles(rightPdf);
-  await expect(page.locator(".handout-content")).toContainText("Introduction to Computer Systems", { timeout: 120_000 });
+  await page.locator(".right-pdf-pane input[type=file]").setInputFiles(rightPdf);
+  await expect(page.locator(".right-pdf-pane .file-name")).toContainText("lec08_vm_malloc_super_detailed_guide.pdf", { timeout: 15_000 });
+  await page.waitForSelector(".right-pdf-pane .pdf-text-layer span", { timeout: 60_000 });
+  await expect(page.locator(".right-pdf-pane .page-pill").first()).toContainText("/ 102", { timeout: 15_000 });
+  await assertRightPdfCanvas(page);
   await maybeScreenshot(page, "01-workspace-loaded.png");
 
   await selectFirstPdfText(page);
+  await expect(page.locator(".assistant-title")).toContainText("已选中", { timeout: 10_000 });
+  await page.locator(".dock-icon-button").click();
+  await page.waitForTimeout(120);
   await page.waitForFunction(() => {
     const text = document.querySelector(".selected-text")?.textContent || "";
     return text.trim().length > 0 && !text.includes("在左侧英文 PDF");
@@ -48,11 +57,11 @@ async function main() {
   const selectedText = await page.locator(".selected-text").innerText({ timeout: 10_000 });
   if (!selectedText.trim()) throw new Error("Selected text zone did not update.");
 
-  await expect(page.locator(".translation-surface")).toContainText(selectedText.trim().slice(0, 12));
+  await expect(page.locator(".selected-text")).toContainText(selectedText.trim().slice(0, 12));
   await assertDockGeometry(page);
   await assertWorkspaceSurface(page);
   await assertAssistantLayout(page);
-  const translationAttrs = await page.locator(".translation-surface").evaluate((node) => ({
+  const translationAttrs = await page.locator(".selected-text").evaluate((node) => ({
     lang: node.getAttribute("lang"),
     translate: node.getAttribute("translate")
   }));
@@ -82,10 +91,13 @@ async function main() {
   await expect(questionBox).toHaveValue("Explain this in one sentence.", { timeout: 30_000 });
   await expect(page.locator(".success-pill").first()).toContainText("加入成功", { timeout: 30_000 });
 
+  if (!((await page.locator(".assistant-dock").getAttribute("class")) || "").includes("dock-collapsed")) {
+    await page.locator(".dock-icon-button").click();
+    await page.waitForTimeout(120);
+  }
   await page.setViewportSize({ width: 390, height: 780 });
   await assertDockGeometry(page, { mobile: true });
   await assertWorkspaceSurface(page);
-  await assertAssistantLayout(page);
   await maybeScreenshot(page, "04-mobile-dock.png");
   await page.setViewportSize({ width: 1440, height: 950 });
 
@@ -123,7 +135,7 @@ async function main() {
 
 async function selectFirstPdfText(page: Page) {
   await page.evaluate(() => {
-    const spans = ([...document.querySelectorAll(".pdf-text-layer span")] as HTMLElement[])
+    const spans = ([...document.querySelectorAll(".left-pdf-pane .pdf-text-layer span")] as HTMLElement[])
       .filter((item) => (item.textContent || "").trim().length > 0);
     const firstIndex = spans.findIndex((item) => (item.textContent || "").trim().length > 6);
     if (firstIndex < 0) throw new Error("No selectable PDF text span found.");
@@ -142,7 +154,7 @@ async function selectFirstPdfText(page: Page) {
     const selection = window.getSelection();
     selection?.removeAllRanges();
     selection?.addRange(range);
-    document.querySelector(".pdf-page-wrap")?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    document.querySelector(".left-pdf-pane .pdf-page-wrap")?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
   });
 }
 
@@ -152,10 +164,23 @@ function assertWorkspaceFile(dump: { files?: string[] } | undefined, needle: str
   }
 }
 
+async function assertRightPdfCanvas(page: Page) {
+  const box = await page.locator(".right-pdf-pane canvas").boundingBox();
+  if (!box || box.width <= 0 || box.height <= 0) {
+    throw new Error(`Right PDF canvas did not render with usable dimensions: ${JSON.stringify(box)}`);
+  }
+  const textCount = await page.locator(".right-pdf-pane .pdf-text-layer span").count();
+  if (textCount <= 0) {
+    throw new Error("Right PDF text layer did not render any text spans.");
+  }
+}
+
 async function assertDockGeometry(page: Page, options: { mobile?: boolean } = {}) {
   const box = await page.locator(".assistant-dock").boundingBox();
   const viewport = page.viewportSize();
   if (!box || !viewport) throw new Error("Assistant dock geometry unavailable.");
+  const dockClass = await page.locator(".assistant-dock").getAttribute("class");
+  const collapsed = Boolean(dockClass?.includes("dock-collapsed"));
   const position = await page.locator(".assistant-dock").evaluate((node) => window.getComputedStyle(node).position);
   if (position !== "fixed") {
     throw new Error(`Assistant dock must be fixed overlay, got ${position}.`);
@@ -171,22 +196,31 @@ async function assertDockGeometry(page: Page, options: { mobile?: boolean } = {}
     throw new Error(`Assistant dock bottom gap out of target range: ${bottomGap}px`);
   }
   const ratio = box.width / viewport.width;
-  if (!options.mobile && (ratio < 0.62 || ratio > 0.72)) {
+  if (!options.mobile && (ratio < 0.2 || ratio > 0.42)) {
     throw new Error(`Assistant dock width ratio out of target range: ${ratio.toFixed(2)}`);
   }
-  if (options.mobile && ratio < 0.9) {
+  if (options.mobile && ratio < 0.82) {
     throw new Error(`Mobile assistant dock should use nearly full width: ${ratio.toFixed(2)}`);
   }
-  const maxHeight = options.mobile ? viewport.height * 0.82 + 2 : viewport.height * 0.55 + 2;
+  const maxHeight = viewport.height * 0.55 + 2;
   if (box.height > maxHeight) {
     throw new Error(`Assistant dock too tall: ${box.height}px`);
   }
-  if (!options.mobile && box.height < 260) {
+  if (collapsed && box.height > 62) {
+    throw new Error(`Collapsed assistant dock is too tall: ${box.height}px`);
+  }
+  if (!options.mobile && !collapsed && box.height < 220) {
     throw new Error(`Assistant dock too short: ${box.height}px`);
   }
+  await assertDockDoesNotBlockPrimaryReading(page);
 }
 
 async function exerciseDockModes(page: Page) {
+  if ((await page.locator(".assistant-dock").getAttribute("class"))?.includes("dock-collapsed")) {
+    await page.locator(".dock-icon-button").click();
+    await page.waitForTimeout(120);
+  }
+
   const compactBox = await page.locator(".assistant-dock").boundingBox();
   const workspaceBox = await page.locator(".workspace").boundingBox();
   if (!compactBox) throw new Error("Missing compact dock.");
@@ -196,7 +230,7 @@ async function exerciseDockModes(page: Page) {
   await page.waitForTimeout(120);
   await assertWorkspaceHeightStable(page, workspaceBox.height);
   const expandedBox = await page.locator(".assistant-dock").boundingBox();
-  if (!expandedBox || expandedBox.height < compactBox.height + 60) {
+  if (!expandedBox || expandedBox.height < compactBox.height + 30) {
     throw new Error("Expanded assistant dock did not grow enough.");
   }
   await assertDockGeometry(page);
@@ -242,6 +276,47 @@ async function assertWorkspaceHeightStable(page: Page, expectedHeight: number) {
   if (!box) throw new Error("Workspace geometry unavailable.");
   if (Math.abs(box.height - expectedHeight) > 2) {
     throw new Error(`Workspace height changed when assistant moved: before=${expectedHeight}, after=${box.height}`);
+  }
+}
+
+async function assertDockDoesNotBlockPrimaryReading(page: Page) {
+  const issues = await page.evaluate(() => {
+    const dock = document.querySelector(".assistant-dock")?.getBoundingClientRect();
+    const leftToolbar = document.querySelector(".left-pdf-pane .pane-toolbar")?.getBoundingClientRect();
+    const rightToolbar = document.querySelector(".right-pdf-pane .pane-toolbar")?.getBoundingClientRect();
+    const leftPage = document.querySelector(".left-pdf-pane .pdf-page-wrap")?.getBoundingClientRect();
+    const rightPage = document.querySelector(".right-pdf-pane .pdf-page-wrap")?.getBoundingClientRect();
+    const problems: string[] = [];
+    if (!dock) return ["missing assistant dock"];
+
+    for (const [name, box] of [["left toolbar", leftToolbar], ["right toolbar", rightToolbar]] as const) {
+      if (box && intersects(dock, box)) problems.push(`dock overlaps ${name}`);
+    }
+
+    const middleLine = window.innerHeight * 0.5;
+    if (dock.top < middleLine) {
+      problems.push(`dock reaches too high: ${Math.round(dock.top)}px`);
+    }
+
+    for (const [name, box] of [["left page", leftPage], ["right page", rightPage]] as const) {
+      if (!box) continue;
+      const safeTopHalf = {
+        left: box.left,
+        right: box.right,
+        top: box.top,
+        bottom: box.top + box.height * 0.52
+      };
+      if (intersects(dock, safeTopHalf)) problems.push(`dock overlaps upper half of ${name}`);
+    }
+    return problems;
+
+    function intersects(a: DOMRect, b: { left: number; right: number; top: number; bottom: number }) {
+      return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    }
+  });
+
+  if (issues.length) {
+    throw new Error(`Assistant dock obstruction issues: ${issues.join("; ")}`);
   }
 }
 

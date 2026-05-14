@@ -12,8 +12,8 @@ TwinPDF is not a SaaS dashboard or a general PDF suite. The final product shape 
 - First launch: `选择学习工作区`
 - Main workspace:
   - quiet top header
-  - symmetric left/right reading panes
-  - bottom resizable assistant dock
+  - symmetric left/right PDF reading panes
+  - small bottom-right assistant dock, collapsed by default
 - Final summary:
   - saved questions list
   - personal sub-handout preview
@@ -31,6 +31,7 @@ TwinPDF is not a SaaS dashboard or a general PDF suite. The final product shape 
 
 - The assistant belongs to a fixed bottom dock overlay, not the normal workspace document flow.
 - The fixed dock must never compress the left/right reading panes; users can collapse it to a 52px strip when they want uninterrupted reading.
+- The right pane is a PDF reader. Markdown remains only for generated/exported summaries, not for the main right-side reading surface.
 - Assistant states are explicit: collapsed, compact, expanded.
-- The command strip should keep mode, locks, save, and success state visible without turning the dock into a form pile.
+- The command strip should expose only essential controls by default.
 - The reading panes stay primary; AI Assist should support the study surface, not compete with it.

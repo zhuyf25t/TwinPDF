@@ -8,11 +8,12 @@ export function SelectedTextPanel({ hasSelection, selectedText, onCopy }: Select
   return (
     <section className="assistant-box selected-zone">
       <div className="box-title">
-        <span>Selected Text 原文</span>
+        <span>选中内容</span>
+        <small>普通网页文本，可直接被浏览器翻译</small>
         <button className="text-tool-button" onClick={onCopy}>复制</button>
       </div>
-      <div className={`selected-text ${hasSelection ? "" : "empty-state"}`} lang="en">
-        {selectedText}
+      <div className={`selected-text translation-surface ${hasSelection ? "" : "empty-state"}`} lang="en" translate="yes">
+        <p>{selectedText}</p>
       </div>
     </section>
   );
