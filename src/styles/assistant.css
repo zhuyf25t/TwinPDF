@@ -17,8 +17,12 @@
   transition: height 0.14s ease, width 0.14s ease, transform 0.14s ease;
 }
 
+.selection-only-dock {
+  width: min(344px, calc(100vw - 28px));
+}
+
 .dock-collapsed {
-  width: min(330px, calc(100vw - 28px));
+  width: min(300px, calc(100vw - 28px));
 }
 
 .dock-collapsed .dock-resize-handle {
@@ -144,6 +148,24 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.assistant-selection-only {
+  padding: 8px 10px 10px;
+}
+
+.assistant-selection-only .assistant-box {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+}
+
+.assistant-selection-only .selected-text {
+  max-height: none;
+  height: 100%;
+  overflow: auto;
+  font-size: 14px;
+  line-height: 1.65;
 }
 
 .assistant-command-row {
@@ -278,16 +300,7 @@
 
 .translation-surface p {
   margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dock-expanded .translation-surface p {
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: pre-wrap;
 }
 
 .answer-text {

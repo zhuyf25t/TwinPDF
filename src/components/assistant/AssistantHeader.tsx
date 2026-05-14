@@ -4,8 +4,6 @@ import type { AssistantDockMode } from "../../shared/contracts";
 type AssistantHeaderProps = {
   dockMode: AssistantDockMode;
   selectedStatus: string;
-  modeText: string;
-  onToggleSize: () => void;
   onToggleCollapse: () => void;
   onMovePointerDown: PointerEventHandler<HTMLDivElement>;
   onMovePointerMove: PointerEventHandler<HTMLDivElement>;
@@ -16,8 +14,6 @@ type AssistantHeaderProps = {
 export function AssistantHeader({
   dockMode,
   selectedStatus,
-  modeText,
-  onToggleSize,
   onToggleCollapse,
   onMovePointerDown,
   onMovePointerMove,
@@ -36,21 +32,18 @@ export function AssistantHeader({
       <div className="assistant-title">
         <span className="assistant-move-grip" aria-hidden="true" />
         <strong>随堂助手</strong>
-        <span>AI Assist</span>
         <em>{selectedStatus}</em>
       </div>
       <div className="assistant-header-actions">
-        {dockMode !== "collapsed" && (
-          <button className="dock-toggle-button" onClick={onToggleSize}>
-            {modeText}
-          </button>
-        )}
         <button
           className="dock-icon-button"
-          onClick={onToggleCollapse}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleCollapse();
+          }}
           aria-label={dockMode === "collapsed" ? "展开随堂助手" : "收起随堂助手"}
         >
-          {dockMode === "collapsed" ? "↑" : "−"}
+          {dockMode === "collapsed" ? "+" : "-"}
         </button>
       </div>
     </div>

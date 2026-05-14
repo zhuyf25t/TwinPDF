@@ -2,22 +2,13 @@
   .assistant-dock {
     right: 12px;
     bottom: 12px;
-    width: min(430px, calc(100vw - 24px));
-  }
-
-  .mode-group,
-  .lock-group {
-    flex-wrap: wrap;
+    width: min(344px, calc(100vw - 24px));
   }
 }
 
 @media (max-width: 820px) {
   .assistant-dock.dock-compact {
-    height: min(320px, 52vh) !important;
-  }
-
-  .assistant-dock.dock-expanded {
-    height: min(55vh, 520px) !important;
+    height: 176px !important;
   }
 
   .selected-text,
@@ -38,9 +29,5 @@
   .assistant-dock {
     right: 10px;
     width: calc(100vw - 20px);
-  }
-
-  .ask-row {
-    grid-template-columns: minmax(0, 1fr) 70px;
   }
 }

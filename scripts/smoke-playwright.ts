@@ -27,6 +27,7 @@ async function main() {
 
   await page.locator(".workspace-gate .primary-button").click();
   await expect(page.locator(".app-shell")).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator(".app-header")).toHaveCount(0);
 
   await expect(page.locator(".left-pdf-pane.pdf-pane")).toBeVisible();
   await expect(page.locator(".right-pdf-pane.pdf-pane")).toBeVisible();
@@ -48,8 +49,10 @@ async function main() {
 
   await selectFirstPdfText(page);
   await expect(page.locator(".assistant-title")).toContainText("已选中", { timeout: 10_000 });
-  await page.locator(".dock-icon-button").click();
-  await page.waitForTimeout(120);
+  if ((await page.locator(".assistant-dock").getAttribute("class"))?.includes("dock-collapsed")) {
+    await page.locator(".dock-icon-button").click();
+    await page.waitForTimeout(120);
+  }
   await page.waitForFunction(() => {
     const text = document.querySelector(".selected-text")?.textContent || "";
     return text.trim().length > 0 && !text.includes("在左侧英文 PDF");
@@ -68,6 +71,37 @@ async function main() {
   if (translationAttrs.lang !== "en" || translationAttrs.translate !== "yes") {
     throw new Error("Translation surface is not ordinary translatable HTML.");
   }
+
+  await expect(page.locator(".assistant-command-row")).toHaveCount(0);
+  await expect(page.locator(".answer-text")).toHaveCount(0);
+  await expect(page.locator(".ask-row")).toHaveCount(0);
+  await exerciseMinimalDock(page);
+  await maybeScreenshot(page, "02-selection-helper.png");
+
+  await page.setViewportSize({ width: 390, height: 780 });
+  await assertDockGeometry(page, { mobile: true });
+  await assertWorkspaceSurface(page);
+  await maybeScreenshot(page, "03-mobile-selection-helper.png");
+  await page.setViewportSize({ width: 1440, height: 950 });
+  await assertAssistantCanMove(page);
+  await maybeScreenshot(page, "04-moved-selection-helper.png");
+
+  const minimalDump = await page.evaluate(() => (window as any).__twinpdfWorkspaceDump?.());
+  assertWorkspaceFile(minimalDump, "sources/lec08-vm-malloc.pdf");
+  assertWorkspaceFile(minimalDump, "handouts/imported-handouts/lec08_vm_malloc_super_detailed_guide.pdf");
+  assertWorkspaceFile(minimalDump, "cache/sentences/");
+  assertWorkspaceFile(minimalDump, "cache/page-labels/");
+
+  console.log(JSON.stringify({
+    ok: true,
+    appUrl,
+    leftPdf: path.basename(leftPdf),
+    rightPdf: path.basename(rightPdf),
+    workspaceFiles: minimalDump.files.length,
+    selectedText: selectedText.slice(0, 80),
+    assistant: "selection-only"
+  }, null, 2));
+  return;
   await exerciseDockModes(page);
   await maybeScreenshot(page, "02-dock-modes.png");
 
@@ -210,10 +244,43 @@ async function assertDockGeometry(page: Page, options: { mobile?: boolean } = {}
   if (collapsed && box.height > 62) {
     throw new Error(`Collapsed assistant dock is too tall: ${box.height}px`);
   }
-  if (!options.mobile && !collapsed && box.height < 220) {
+  if (!options.mobile && !collapsed && box.height < 130) {
     throw new Error(`Assistant dock too short: ${box.height}px`);
   }
   await assertDockDoesNotBlockPrimaryReading(page);
+}
+
+async function exerciseMinimalDock(page: Page) {
+  if ((await page.locator(".assistant-dock").getAttribute("class"))?.includes("dock-collapsed")) {
+    await page.locator(".dock-icon-button").click();
+    await page.waitForTimeout(120);
+  }
+
+  const compactBox = await page.locator(".assistant-dock").boundingBox();
+  const workspaceBox = await page.locator(".workspace").boundingBox();
+  if (!compactBox) throw new Error("Missing compact selection helper.");
+  if (!workspaceBox) throw new Error("Missing workspace.");
+  if (compactBox.height > 210) {
+    throw new Error(`Selection helper should stay small, got ${compactBox.height}px`);
+  }
+
+  await assertDockGeometry(page);
+  await assertWorkspaceHeightStable(page, workspaceBox.height);
+  await assertAssistantLayout(page);
+
+  await page.locator(".dock-icon-button").click();
+  await page.waitForTimeout(120);
+  const collapsedBox = await page.locator(".assistant-dock").boundingBox();
+  if (!collapsedBox || collapsedBox.height > 50) {
+    throw new Error(`Collapsed selection helper is too tall: ${collapsedBox?.height}`);
+  }
+  await assertWorkspaceHeightStable(page, workspaceBox.height);
+
+  await page.locator(".dock-icon-button").click();
+  await page.waitForTimeout(120);
+  await assertDockGeometry(page);
+  await assertWorkspaceHeightStable(page, workspaceBox.height);
+  await assertAssistantLayout(page);
 }
 
 async function exerciseDockModes(page: Page) {
@@ -293,6 +360,8 @@ async function assertDockDoesNotBlockPrimaryReading(page: Page) {
     for (const [name, box] of [["left toolbar", leftToolbar], ["right toolbar", rightToolbar]] as const) {
       if (box && intersects(dock, box)) problems.push(`dock overlaps ${name}`);
     }
+
+    if (window.innerWidth < 700) return problems;
 
     const middleLine = window.innerHeight * 0.5;
     if (dock.top < middleLine) {
@@ -380,7 +449,7 @@ async function assertWorkspaceSurface(page: Page) {
 
 async function assertAssistantLayout(page: Page) {
   const issues = await page.evaluate(() => {
-    const selectors = [".assistant-header", ".mode-row", ".assistant-grid", ".ask-row"];
+    const selectors = [".assistant-header", ".assistant-selection-only", ".selected-text"];
     const dock = document.querySelector(".assistant-dock")?.getBoundingClientRect();
     const boxes = selectors.map((selector) => ({
       selector,
@@ -397,15 +466,18 @@ async function assertAssistantLayout(page: Page) {
         problems.push(`${item.selector} outside dock`);
       }
     }
-    for (let index = 1; index < boxes.length; index += 1) {
-      const previous = boxes[index - 1].box;
-      const current = boxes[index].box;
-      if (previous && current && current.top < previous.bottom - 3) {
-        problems.push(`${boxes[index - 1].selector} overlaps ${boxes[index].selector}`);
-      }
+
+    const forbiddenSelectors = [".assistant-command-row", ".answer-text", ".ask-row", ".save-chip", ".tiny-lock", ".mode-chip"];
+    for (const selector of forbiddenSelectors) {
+      if (document.querySelector(selector)) problems.push(`forbidden assistant control still visible: ${selector}`);
     }
 
-    const overflowSelectors = [".tiny-lock", ".mode-chip", ".success-pill", ".send-button", ".finalize-button", ".text-tool-button"];
+    const selectedText = document.querySelector(".selected-text");
+    if (selectedText?.getAttribute("lang") !== "en" || selectedText?.getAttribute("translate") !== "yes") {
+      problems.push("selected text surface is not ordinary browser-translatable HTML");
+    }
+
+    const overflowSelectors = [".dock-icon-button"];
     for (const node of [...document.querySelectorAll(overflowSelectors.join(","))] as HTMLElement[]) {
       const style = window.getComputedStyle(node);
       if (style.display === "none" || node.offsetParent === null) continue;

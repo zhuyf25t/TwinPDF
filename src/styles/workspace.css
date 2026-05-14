@@ -159,7 +159,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
-  padding: 12px 14px 18px;
+  padding: 8px 10px 10px;
   overflow: hidden;
 }
 

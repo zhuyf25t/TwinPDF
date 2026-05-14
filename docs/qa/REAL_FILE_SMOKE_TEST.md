@@ -102,3 +102,34 @@ Additional checks added in this pass:
 - The assistant remains `position: fixed` after moving.
 - Workspace height remains stable while resizing, collapsing, expanding, and moving the assistant.
 - Latest screenshots are in `docs/qa/screenshots/continuous-movable-final-3/`.
+
+## Latest Selection-Only Helper Smoke
+
+Date: 2026-05-14
+
+Command:
+
+```bash
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/selection-helper-pass npm run smoke:real-pdf
+```
+
+Result:
+
+```json
+{
+  "ok": true,
+  "appUrl": "http://localhost:9999",
+  "leftPdf": "lec08-vm-malloc.pdf",
+  "rightPdf": "lec08_vm_malloc_super_detailed_guide.pdf",
+  "workspaceFiles": 58,
+  "selectedText": "Lecture 8 Virtual Memory & Memory Management Mingyu Gao gaomy@tsinghua.edu.cn",
+  "assistant": "selection-only"
+}
+```
+
+Additional checks added in this pass:
+
+- The global top bar is absent, so the two PDF panes use the full viewport height.
+- The helper contains no AI answer, question input, mode chips, locks, or add-to-subhandout controls.
+- The helper is a small movable fixed overlay.
+- The helper body is entirely the selected-text browser translation surface with `lang="en"` and `translate="yes"`.

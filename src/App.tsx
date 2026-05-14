@@ -177,21 +177,6 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <div className="brand">
-          <span className="brand-mark">T</span>
-          <span className="brand-title">TwinPDF</span>
-        </div>
-        <input
-          className="course-title-input"
-          value={courseTitle}
-          onChange={(event) => setCourseTitle(event.target.value)}
-          aria-label="课程名称"
-        />
-        <span className="workspace-status">{status}</span>
-        <button className="finalize-button" onClick={() => void finalizeCourse()}>结束课程总结</button>
-      </header>
-
       <main className="workspace">
         <PdfPane
           title="英文课件"
