@@ -6,6 +6,7 @@ export type AiConfig = {
   apiKey: string;
   baseUrl: string;
   model: string;
+  reasoning: boolean;
   mock: boolean;
   hasKey: boolean;
 };
@@ -33,7 +34,8 @@ export function aiConfig(): AiConfig {
   return {
     apiKey,
     baseUrl: (process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com/v1").trim(),
-    model: (process.env.DEEPSEEK_MODEL ?? "deepseek-chat").trim(),
+    model: (process.env.DEEPSEEK_MODEL ?? "deepseek-v4-pro").trim(),
+    reasoning: parseBoolean(process.env.DEEPSEEK_REASONING ?? "true"),
     mock: explicitMock || !apiKey,
     hasKey: Boolean(apiKey)
   };

@@ -3,24 +3,30 @@ import { AssistantDock } from "./components/assistant/AssistantDock";
 import { PdfPane } from "./components/pdf/PdfPane";
 import { FinalSummaryModal } from "./components/summary/FinalSummaryModal";
 import { WorkspaceGate } from "./components/workspace/WorkspaceGate";
-import { requestFinalSummary, requestLabelPage } from "./lib/ai/client";
+import { requestFinalSummary, requestLabelPage, requestTermLabels } from "./lib/ai/client";
 import { buildFinalSummaryMarkdown, ensureFinalSummaryMarkdown } from "./lib/markdown";
 import { buildNearbyContext } from "./lib/pdf/sentence";
+import { buildTermContext, extractTermsFromPdfIndex, labelArrayToMap, makeTermLabelIndex, mergeTermLabels, normalizeTermKey } from "./lib/pdf/terms";
 import {
   copyFileToWorkspace,
   loadWorkspaceData,
+  readTermLabelCache,
   safeName,
   saveExportMarkdown,
   saveSettings,
   saveStudyLog,
   writePageLabels,
-  writeSentenceCache
+  writeSentenceCache,
+  writeTermLabelCache
 } from "./lib/workspace/fsAccess";
 import type {
   AppSettings,
+  ClickedTermContext,
   PdfSentenceIndex,
   SelectedContext,
   StudyLogEntry,
+  TermLabel,
+  TermLabelIndex,
   WorkspaceData,
   WorkspaceRef
 } from "./shared/contracts";
@@ -44,6 +50,7 @@ export default function App() {
   const [savedSummaryPath, setSavedSummaryPath] = useState<string | null>(null);
   const [status, setStatus] = useState("请选择学习工作区");
   const [rightPdfContext, setRightPdfContext] = useState("");
+  const [leftPdfTermIndex, setLeftPdfTermIndex] = useState<TermLabelIndex | null>(null);
 
   const settings = workspaceData?.settings;
   const studyLog = workspaceData?.studyLog ?? [];
@@ -118,6 +125,7 @@ export default function App() {
   async function handleSentenceIndexReady(index: PdfSentenceIndex) {
     if (!workspace) return;
     await writeSentenceCache(workspace, index.pdfId, index);
+    await ensureTermLabels(index);
     const usefulPages = index.pages.filter((page) => page.sentences.length > 0 && page.pageText.trim());
     setStatus(`句子缓存已写入：${index.pdfName}，共 ${index.pages.length} 页，开始后台标注。`);
 
@@ -141,6 +149,85 @@ export default function App() {
     }
 
     setStatus(`PDF 准备完成：${index.pdfName}。句子缓存和页面标签已写入工作区。`);
+  }
+
+  async function ensureTermLabels(index: PdfSentenceIndex) {
+    if (!workspace) return;
+    const emptyIndex = makeTermLabelIndex(index.pdfId, index.pdfName, []);
+    const cached = await readTermLabelCache<TermLabelIndex>(workspace, index.pdfId, emptyIndex);
+    if (cached.labels?.length) {
+      setLeftPdfTermIndex(cached);
+      setStatus(`词义缓存已读取：${cached.labels.length} 个去重词。`);
+      return;
+    }
+
+    const terms = extractTermsFromPdfIndex(index);
+    const labels: TermLabel[] = [];
+    const contextText = buildTermContext(index);
+    setStatus(`正在生成词义缓存：${terms.length} 个去重词。`);
+
+    for (let start = 0; start < terms.length; start += 220) {
+      const chunk = terms.slice(start, start + 220);
+      const result = await requestTermLabels({
+        courseTitle,
+        pdfId: index.pdfId,
+        pdfName: index.pdfName,
+        terms: chunk,
+        contextText,
+        language: "zh-CN"
+      });
+      labels.push(...result.labels);
+      const partial = makeTermLabelIndex(index.pdfId, index.pdfName, labels, result.model);
+      setLeftPdfTermIndex(partial);
+      await writeTermLabelCache(workspace, index.pdfId, partial);
+      setStatus(`词义缓存生成中：${Math.min(start + chunk.length, terms.length)}/${terms.length} 个词。`);
+      await new Promise((resolve) => window.setTimeout(resolve, 40));
+    }
+  }
+
+  async function handleWordClick(payload: ClickedTermContext) {
+    const key = normalizeTermKey(payload.term);
+    const label = key ? labelArrayToMap(leftPdfTermIndex?.labels || []).get(key) : undefined;
+    const termLabel: TermLabel = label || {
+      term: payload.term,
+      normalized: key,
+      chinese: "标注中",
+      definition: "词义缓存还在生成；稍后会自动补上。",
+      source: "local"
+    };
+
+    setSelected({
+      selectedText: payload.term,
+      pageLabel: payload.pageLabel,
+      pageNumber: payload.pageNumber,
+      pageText: payload.pageText,
+      nearbyContext: payload.nearbyContext,
+      source: payload.source,
+      clickedTerm: payload.term,
+      termLabel
+    });
+
+    if (!workspace || !leftPdfTermIndex || label || !key) return;
+    try {
+      const result = await requestTermLabels({
+        courseTitle,
+        pdfId: leftPdfTermIndex.pdfId,
+        pdfName: leftPdfTermIndex.pdfName,
+        terms: [payload.term],
+        contextText: payload.nearbyContext || payload.pageText,
+        language: "zh-CN"
+      });
+      const nextIndex = {
+        ...leftPdfTermIndex,
+        labels: mergeTermLabels(leftPdfTermIndex.labels, result.labels),
+        model: result.model || leftPdfTermIndex.model,
+        updatedAt: new Date().toISOString()
+      };
+      setLeftPdfTermIndex(nextIndex);
+      await writeTermLabelCache(workspace, leftPdfTermIndex.pdfId, nextIndex);
+    } catch (error) {
+      setStatus(`词义补标暂时失败：${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async function finalizeCourse() {
@@ -186,6 +273,7 @@ export default function App() {
           selectionSource="left-pdf"
           initialZoom={0.54}
           onSelectionChange={setSelected}
+          onWordClick={(word) => void handleWordClick(word)}
           onPdfFileLoaded={(file) => void handlePdfFileLoaded(file)}
           onSentenceIndexReady={(index) => void handleSentenceIndexReady(index)}
         />

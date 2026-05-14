@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import workerSrc from "pdfjs-dist/build/pdf.worker.mjs?url";
-import type { PageSentenceIndex, PdfSentenceIndex, SelectedContext, SentenceRecord } from "../../shared/contracts";
+import type { ClickedTermContext, PageSentenceIndex, PdfSentenceIndex, SelectedContext, SentenceRecord } from "../../shared/contracts";
 import { boundPageText, buildNearbyContext, findSentenceForSelection, makePdfId, normalizePdfText, splitIntoSentences } from "../../lib/pdf/sentence";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -19,6 +19,7 @@ type PdfPaneProps = {
   showZoomControls?: boolean;
   initialZoom?: number;
   onSelectionChange?: (selection: SelectedContext) => void;
+  onWordClick?: (word: ClickedTermContext) => void;
   onPdfFileLoaded?: (file: File) => void;
   onSentenceIndexReady?: (index: PdfSentenceIndex) => void;
   onPageTextReady?: (payload: { fileName: string; pageNumber: number; pageText: string }) => void;
@@ -62,6 +63,7 @@ export function PdfPane({
   showZoomControls = false,
   initialZoom = 0.6,
   onSelectionChange,
+  onWordClick,
   onPdfFileLoaded,
   onSentenceIndexReady,
   onPageTextReady
@@ -170,6 +172,22 @@ export function PdfPane({
     });
   }
 
+  function captureClickedWord(event: MouseEvent<HTMLDivElement>) {
+    if (!onWordClick) return;
+    const word = findWordAtPoint(event.clientX, event.clientY);
+    if (!word) return;
+    const selectedPageNumber = findEventPageNumber(event) || pageState.pageNumber;
+    const selectedPageState = pageCacheRef.current.get(selectedPageNumber) || pageState;
+    onWordClick({
+      term: word,
+      pageLabel: `第 ${selectedPageState.pageNumber} 页`,
+      pageNumber: selectedPageState.pageNumber,
+      pageText: selectedPageState.pageText,
+      nearbyContext: buildNearbyContext(selectedPageState.pageText, word),
+      source: selectionSource
+    });
+  }
+
   const handlePageReady = useCallback((page: PageState) => {
     pageCacheRef.current.set(page.pageNumber, page);
     if (page.pageNumber === pageNumber) {
@@ -233,6 +251,15 @@ export function PdfPane({
     return undefined;
   }
 
+  function findEventPageNumber(event: MouseEvent<HTMLElement>) {
+    const node = (event.target as HTMLElement | null)?.closest("[data-page-number]");
+    if (node instanceof HTMLElement && node.dataset.pageNumber) {
+      const page = Number(node.dataset.pageNumber);
+      if (Number.isFinite(page)) return page;
+    }
+    return undefined;
+  }
+
   function scrollToRenderedPage(node: HTMLDivElement) {
     const wrap = pageWrapRef.current;
     if (!wrap) return;
@@ -288,7 +315,15 @@ export function PdfPane({
             ))}
           </aside>
         )}
-        <div ref={pageWrapRef} className="pdf-page-wrap" onScroll={handleScroll} onMouseUp={captureSelection} onKeyUp={captureSelection}>
+        <div
+          ref={pageWrapRef}
+          className="pdf-page-wrap"
+          translate="no"
+          onScroll={handleScroll}
+          onClick={captureClickedWord}
+          onMouseUp={captureSelection}
+          onKeyUp={captureSelection}
+        >
           {pdf ? (
             <div className="pdf-page-stack">
               {visiblePages.map((page) => (
@@ -409,6 +444,38 @@ function textContentToPageText(textContent: PdfTextContentLike) {
   return normalizePdfText(parts.join(""), true);
 }
 
+function findWordAtPoint(clientX: number, clientY: number) {
+  const doc = document as Document & {
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+  };
+
+  const caret = doc.caretPositionFromPoint?.(clientX, clientY);
+  if (caret) return extractWordAtOffset(caret.offsetNode.textContent || "", caret.offset);
+
+  const range = doc.caretRangeFromPoint?.(clientX, clientY);
+  if (range) return extractWordAtOffset(range.startContainer.textContent || "", range.startOffset);
+
+  const target = document.elementFromPoint(clientX, clientY);
+  return firstWord(target?.textContent || "");
+}
+
+function extractWordAtOffset(text: string, offset: number) {
+  if (!text.trim()) return "";
+  const bounded = Math.max(0, Math.min(offset, text.length));
+  const matches = [...text.matchAll(/[A-Za-z][A-Za-z0-9]*(?:[-_/&][A-Za-z0-9]+)*/g)];
+  const hit = matches.find((match) => {
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    return bounded >= start && bounded <= end;
+  });
+  return hit?.[0] || firstWord(text);
+}
+
+function firstWord(text: string) {
+  return text.match(/[A-Za-z][A-Za-z0-9]*(?:[-_/&][A-Za-z0-9]+)*/)?.[0] || "";
+}
+
 type PdfPageViewProps = {
   pdf: PdfDoc;
   pageNumber: number;
@@ -444,9 +511,9 @@ function PdfPageView({ pdf, pageNumber, zoom, onPageReady, onRenderStatus, setPa
   }, [onPageReady, onRenderStatus, pageNumber, pdf, zoom]);
 
   return (
-    <div ref={setPageRef} className="pdf-rendered-page" data-page-number={pageNumber}>
+    <div ref={setPageRef} className="pdf-rendered-page" data-page-number={pageNumber} translate="no">
       <canvas ref={canvasRef} />
-      <div ref={textLayerRef} className="pdf-text-layer" />
+      <div ref={textLayerRef} className="pdf-text-layer" lang="en" translate="no" />
       <span className="pdf-page-marker">{pageNumber}</span>
     </div>
   );

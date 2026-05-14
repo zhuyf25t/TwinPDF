@@ -2,6 +2,7 @@ import { Router } from "express";
 import { aiConfig } from "../env";
 import { AIProviderError, callDeepSeek } from "../lib/deepseek";
 import { buildAssistMessages, buildFinalizeMessages, buildLabelPageMessages } from "../lib/prompts";
+import { buildTermLabelMessages } from "../prompts/termLabels";
 import { buildFinalSummaryMarkdown } from "../../src/lib/markdown";
 import type {
   AssistRequest,
@@ -11,12 +12,16 @@ import type {
   LabelPageRequest,
   LabelPageResponse,
   SentenceLabel,
-  SentenceRecord
+  SentenceRecord,
+  TermLabel,
+  TermLabelRequest,
+  TermLabelResponse
 } from "../../src/shared/contracts";
 
 export const aiRouter = Router();
 
 const MAX_LABEL_SENTENCES = 80;
+const MAX_TERM_LABELS = 260;
 
 aiRouter.get("/health", (_req, res) => {
   const config = aiConfig();
@@ -65,6 +70,37 @@ aiRouter.post("/label-page", async (req, res) => {
       : parseLabels(await callDeepSeek(buildLabelPageMessages(boundedPayload), { temperature: 0.05, maxTokens: 4200 }));
     const labels = normalizeLabels(boundedPayload, rawLabels);
     res.json({ labels, mock: config.mock } satisfies LabelPageResponse);
+  } catch (error) {
+    sendAiError(res, error);
+  }
+});
+
+aiRouter.post("/label-terms", async (req, res) => {
+  try {
+    const payload = req.body as TermLabelRequest;
+    if (!Array.isArray(payload.terms) || !payload.terms.length) {
+      res.status(400).json({ error: "词义标注请求缺少 terms。" });
+      return;
+    }
+
+    const config = aiConfig();
+    const boundedPayload: TermLabelRequest = {
+      ...payload,
+      terms: [...new Set(payload.terms.map((term) => term.trim()).filter(Boolean))].slice(0, MAX_TERM_LABELS)
+    };
+
+    const labels = config.mock
+      ? boundedPayload.terms.map((term) => mockTermLabel(term))
+      : normalizeTermLabels(
+        boundedPayload.terms,
+        parseTermLabels(await callDeepSeek(buildTermLabelMessages(boundedPayload), {
+          temperature: 0.05,
+          maxTokens: 5200,
+          timeoutMs: 60_000,
+          reasoning: true
+        }))
+      );
+    res.json({ labels, mock: config.mock, model: config.mock ? "mock" : config.model } satisfies TermLabelResponse);
   } catch (error) {
     sendAiError(res, error);
   }
@@ -145,6 +181,63 @@ function normalizeLabels(payload: LabelPageRequest, labels: SentenceLabel[]) {
   return payload.sentences.map((sentence) => byId.get(sentence.id) || mockLabel(sentence.id, sentence.text));
 }
 
+function parseTermLabels(raw: string): TermLabel[] {
+  const cleaned = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  try {
+    const parsed = JSON.parse(cleaned) as { labels?: unknown };
+    if (!Array.isArray(parsed.labels)) return [];
+    return parsed.labels.filter(isTermLabel).map((label) => ({
+      ...label,
+      normalized: normalizeTermKey(label.normalized || label.term),
+      source: "deepseek" as const,
+      updatedAt: new Date().toISOString()
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function normalizeTermLabels(terms: string[], labels: TermLabel[]) {
+  const byKey = new Map(labels.map((label) => [normalizeTermKey(label.normalized || label.term), label]));
+  return terms.map((term) => byKey.get(normalizeTermKey(term)) || mockTermLabel(term, "deepseek"));
+}
+
+function mockTermLabel(term: string, source: "mock" | "deepseek" = "mock"): TermLabel {
+  const key = normalizeTermKey(term);
+  const dictionary: Record<string, Pick<TermLabel, "chinese" | "definition" | "isProperNoun">> = {
+    virtual: { chinese: "虚拟的", definition: "在系统中由软件抽象出来、看起来像真实存在的资源。" },
+    memory: { chinese: "内存", definition: "程序运行时存放代码、数据、栈和堆等内容的地址空间。" },
+    malloc: { chinese: "动态内存分配", definition: "C 语言中从堆上申请一块内存的库函数。", isProperNoun: true },
+    heap: { chinese: "堆", definition: "进程地址空间中用于动态分配内存的区域。" },
+    stack: { chinese: "栈", definition: "保存函数调用帧、局部变量和返回地址的内存区域。" },
+    kernel: { chinese: "内核", definition: "操作系统中管理硬件资源和保护机制的核心部分。", isProperNoun: true },
+    process: { chinese: "进程", definition: "正在运行的程序实例，拥有自己的地址空间。" },
+    address: { chinese: "地址", definition: "内存中定位字节或数据对象的位置编号。" },
+    protection: { chinese: "保护", definition: "防止进程越权访问其他进程或内核内存的机制。" },
+    bound: { chinese: "界限", definition: "Base and Bound 机制中限制可访问地址范围的上界。" },
+    base: { chinese: "基址", definition: "地址转换或范围检查中作为起点的地址值。" },
+    cache: { chinese: "缓存", definition: "保存常用数据以减少访问延迟的较小高速存储。" },
+    page: { chinese: "页", definition: "虚拟内存中固定大小的地址空间管理单位。" },
+    segment: { chinese: "段", definition: "按逻辑区域划分的地址空间部分。" },
+    management: { chinese: "管理" },
+    operating: { chinese: "操作的；运行的" },
+    system: { chinese: "系统" },
+    hardware: { chinese: "硬件" },
+    data: { chinese: "数据" },
+    code: { chinese: "代码" }
+  };
+  const hit = dictionary[key];
+  return {
+    term,
+    normalized: key,
+    chinese: hit?.chinese || fallbackChinese(term),
+    definition: hit?.definition,
+    isProperNoun: hit?.isProperNoun || /^[A-Z]/.test(term) || key.includes("malloc"),
+    source,
+    updatedAt: new Date().toISOString()
+  };
+}
+
 function mockLabel(sentenceId: string, text: string): SentenceLabel {
   const lowered = text.toLowerCase();
   const looksFormula = /[=<>≤≥∑∏]|log\s|kl\(|p\(|q\(/i.test(text);
@@ -177,6 +270,28 @@ function isSentenceLabel(value: unknown): value is SentenceLabel {
     && ["low", "medium", "high"].includes(label.difficulty || "")
     && typeof label.shortGloss === "string"
     && typeof label.likelyQuestion === "string";
+}
+
+function isTermLabel(value: unknown): value is TermLabel {
+  if (!value || typeof value !== "object") return false;
+  const label = value as Partial<TermLabel>;
+  return typeof label.term === "string"
+    && typeof label.chinese === "string"
+    && (label.normalized === undefined || typeof label.normalized === "string")
+    && (label.definition === undefined || typeof label.definition === "string")
+    && (label.isProperNoun === undefined || typeof label.isProperNoun === "boolean");
+}
+
+function normalizeTermKey(term: string) {
+  return term.trim().toLowerCase().replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, "");
+}
+
+function fallbackChinese(term: string) {
+  if (term.length <= 3) return "英文缩写或短词";
+  if (/tion$/.test(term)) return "抽象名词";
+  if (/ing$/.test(term)) return "动作或过程";
+  if (/ed$/.test(term)) return "过去分词或形容词";
+  return "课件词汇";
 }
 
 function sendAiError(res: { status: (code: number) => { json: (body: unknown) => void } }, error: unknown) {

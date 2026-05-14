@@ -11,6 +11,7 @@ export const WORKSPACE_DIRS = [
   "cache",
   "cache/sentences",
   "cache/page-labels",
+  "cache/term-labels",
   "cache/pdf-index"
 ];
 
@@ -127,6 +128,14 @@ export async function writePageLabels(workspace: WorkspaceRef, pdfId: string, pa
   const dir = `cache/page-labels/${safeName(pdfId)}`;
   await getDirectory(workspace.handle, dir, true);
   await writeJson(workspace.handle, `${dir}/page-${String(pageNumber).padStart(4, "0")}.json`, data);
+}
+
+export async function readTermLabelCache<T>(workspace: WorkspaceRef, pdfId: string, fallback: T): Promise<T> {
+  return readJson<T>(workspace.handle, `cache/term-labels/${safeName(pdfId)}.json`, fallback, { repairCorrupt: true });
+}
+
+export async function writeTermLabelCache(workspace: WorkspaceRef, pdfId: string, data: unknown) {
+  await writeJson(workspace.handle, `cache/term-labels/${safeName(pdfId)}.json`, data);
 }
 
 export async function readText(root: any, path: string, fallback = "") {

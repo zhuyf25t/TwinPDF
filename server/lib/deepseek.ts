@@ -9,6 +9,7 @@ export type DeepSeekOptions = {
   temperature?: number;
   maxTokens?: number;
   timeoutMs?: number;
+  reasoning?: boolean;
 };
 
 export class AIProviderError extends Error {
@@ -41,6 +42,10 @@ export async function callDeepSeek(
       temperature: resolvedOptions.temperature ?? 0.2
     };
     if (resolvedOptions.maxTokens) body.max_tokens = resolvedOptions.maxTokens;
+    if (resolvedOptions.reasoning ?? config.reasoning) {
+      body.reasoning = { enabled: true };
+      body.reasoning_effort = "medium";
+    }
 
     const response = await fetch(`${config.baseUrl.replace(/\/+$/, "")}/chat/completions`, {
       method: "POST",

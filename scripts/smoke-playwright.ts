@@ -45,9 +45,13 @@ async function main() {
   await page.waitForSelector(".right-pdf-pane .pdf-text-layer span", { timeout: 60_000 });
   await expect(page.locator(".right-pdf-pane .page-pill").first()).toContainText("/ 102", { timeout: 15_000 });
   await assertRightPdfCanvas(page);
+  await page.waitForFunction(() => {
+    const dump = (window as any).__twinpdfWorkspaceDump?.();
+    return dump?.files?.some((file: string) => file.includes("cache/term-labels/"));
+  }, undefined, { timeout: 60_000 });
   await maybeScreenshot(page, "01-workspace-loaded.png");
 
-  await selectFirstPdfText(page);
+  const clickedWord = await clickFirstPdfWord(page);
   await expect(page.locator(".assistant-title")).toContainText("已选中", { timeout: 10_000 });
   if ((await page.locator(".assistant-dock").getAttribute("class"))?.includes("dock-collapsed")) {
     await page.locator(".dock-icon-button").click();
@@ -60,16 +64,17 @@ async function main() {
   const selectedText = await page.locator(".selected-text").innerText({ timeout: 10_000 });
   if (!selectedText.trim()) throw new Error("Selected text zone did not update.");
 
-  await expect(page.locator(".selected-text")).toContainText(selectedText.trim().slice(0, 12));
+  await expect(page.locator(".selected-text")).toContainText(clickedWord);
+  await expect(page.locator(".selected-text")).toContainText("：");
   await assertDockGeometry(page);
   await assertWorkspaceSurface(page);
   await assertAssistantLayout(page);
-  const translationAttrs = await page.locator(".selected-text").evaluate((node) => ({
+  const labelAttrs = await page.locator(".selected-text").evaluate((node) => ({
     lang: node.getAttribute("lang"),
     translate: node.getAttribute("translate")
   }));
-  if (translationAttrs.lang !== "en" || translationAttrs.translate !== "yes") {
-    throw new Error("Translation surface is not ordinary translatable HTML.");
+  if (labelAttrs.lang !== "zh-CN" || labelAttrs.translate !== "no") {
+    throw new Error("Term label surface should not rely on browser translation.");
   }
 
   await expect(page.locator(".assistant-command-row")).toHaveCount(0);
@@ -90,7 +95,7 @@ async function main() {
   assertWorkspaceFile(minimalDump, "sources/lec08-vm-malloc.pdf");
   assertWorkspaceFile(minimalDump, "handouts/imported-handouts/lec08_vm_malloc_super_detailed_guide.pdf");
   assertWorkspaceFile(minimalDump, "cache/sentences/");
-  assertWorkspaceFile(minimalDump, "cache/page-labels/");
+  assertWorkspaceFile(minimalDump, "cache/term-labels/");
 
   console.log(JSON.stringify({
     ok: true,
@@ -191,6 +196,18 @@ async function selectFirstPdfText(page: Page) {
     selection?.addRange(range);
     document.querySelector(".left-pdf-pane .pdf-page-wrap")?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
   });
+}
+
+async function clickFirstPdfWord(page: Page) {
+  const span = page.locator(".left-pdf-pane .pdf-text-layer span").filter({ hasText: /[A-Za-z]{3,}/ }).first();
+  await expect(span).toBeVisible({ timeout: 20_000 });
+  const text = (await span.innerText()).trim();
+  const word = text.match(/[A-Za-z][A-Za-z0-9]*(?:[-_/&][A-Za-z0-9]+)*/)?.[0];
+  if (!word) throw new Error(`Could not find an English word in first PDF span: ${text}`);
+  const box = await span.boundingBox();
+  if (!box) throw new Error("First PDF word span has no bounding box.");
+  await page.mouse.click(box.x + Math.max(4, Math.min(box.width / 2, 24)), box.y + box.height / 2);
+  return word;
 }
 
 function assertWorkspaceFile(dump: { files?: string[] } | undefined, needle: string) {
@@ -473,8 +490,8 @@ async function assertAssistantLayout(page: Page) {
     }
 
     const selectedText = document.querySelector(".selected-text");
-    if (selectedText?.getAttribute("lang") !== "en" || selectedText?.getAttribute("translate") !== "yes") {
-      problems.push("selected text surface is not ordinary browser-translatable HTML");
+    if (selectedText?.getAttribute("lang") !== "zh-CN" || selectedText?.getAttribute("translate") !== "no") {
+      problems.push("term label surface should be owned by TwinPDF, not browser translation");
     }
 
     const overflowSelectors = [".dock-icon-button"];

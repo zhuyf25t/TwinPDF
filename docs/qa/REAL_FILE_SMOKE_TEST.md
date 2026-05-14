@@ -29,7 +29,7 @@ Smoke JSON:
   "appUrl": "http://localhost:9999",
   "leftPdf": "lec08-vm-malloc.pdf",
   "rightPdf": "lec08_vm_malloc_super_detailed_guide.pdf",
-  "workspaceFiles": 59,
+  "workspaceFiles": 58,
   "selectedText": "Lecture 8 Virtual Memory & Memory Management Mingyu Gao gaomy@tsinghua.edu.cn"
 }
 ```
@@ -132,4 +132,36 @@ Additional checks added in this pass:
 - The global top bar is absent, so the two PDF panes use the full viewport height.
 - The helper contains no AI answer, question input, mode chips, locks, or add-to-subhandout controls.
 - The helper is a small movable fixed overlay.
-- The helper body is entirely the selected-text browser translation surface with `lang="en"` and `translate="yes"`.
+- The helper body is a single selected-text surface; later term-label pass changes it away from browser translation.
+
+## Latest Term Label Smoke
+
+Date: 2026-05-14
+
+Command:
+
+```bash
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/term-label-pass npm run smoke:real-pdf
+```
+
+Result:
+
+```json
+{
+  "ok": true,
+  "appUrl": "http://localhost:9999",
+  "leftPdf": "lec08-vm-malloc.pdf",
+  "rightPdf": "lec08_vm_malloc_super_detailed_guide.pdf",
+  "workspaceFiles": 59,
+  "selectedText": "Lecture：课件词汇",
+  "assistant": "selection-only"
+}
+```
+
+Additional checks added in this pass:
+
+- PDF text layers are marked `translate="no"` so browser translation does not rewrite the hidden PDF text used for selection/click lookup.
+- Importing the English PDF builds a deduplicated term-label cache in `cache/term-labels/`.
+- Clicking an English word in the left PDF shows a `term：中文` label in the small helper.
+- The helper label surface is `lang="zh-CN"` and `translate="no"`; TwinPDF owns the translation/definition instead of relying on browser translation.
+- The new DeepSeek prompt lives under `server/prompts/`.

@@ -298,7 +298,16 @@
   background: var(--paper);
 }
 
+.term-label-surface {
+  background: var(--paper);
+}
+
 .translation-surface p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.term-label-surface p {
   margin: 0;
   white-space: pre-wrap;
 }

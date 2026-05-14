@@ -30,9 +30,11 @@ export function AssistantDock({
 
   const rawSelectedText = selected.selectedText || "";
   const hasSelection = rawSelectedText.trim().length > 0;
-  const selectedText = hasSelection
+  const selectedText = selected.termLabel
+    ? selected.termLabel.term
+    : hasSelection
     ? rawSelectedText
-    : "在英文课件中选中一句话或一段文字，这里会显示普通网页文本，可直接被浏览器翻译。";
+    : "在英文课件中点击一个英文词，这里会显示中文 label 和必要定义。";
   const dockMode = settings.assistantMode === "collapsed" ? "collapsed" : "compact";
   const selectionSignature = useMemo(() => [
     rawSelectedText,
@@ -120,7 +122,7 @@ export function AssistantDock({
 
       {dockMode !== "collapsed" && (
         <div className="assistant-body assistant-selection-only">
-          <SelectedTextPanel hasSelection={hasSelection} selectedText={selectedText || emptySelection} />
+          <SelectedTextPanel hasSelection={hasSelection} selectedText={selectedText || emptySelection} termLabel={selected.termLabel} />
         </div>
       )}
     </aside>

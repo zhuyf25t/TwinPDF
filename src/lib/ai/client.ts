@@ -1,4 +1,13 @@
-import type { AssistRequest, AssistResponse, FinalizeRequest, FinalizeResponse, LabelPageRequest, LabelPageResponse } from "../../shared/contracts";
+import type {
+  AssistRequest,
+  AssistResponse,
+  FinalizeRequest,
+  FinalizeResponse,
+  LabelPageRequest,
+  LabelPageResponse,
+  TermLabelRequest,
+  TermLabelResponse
+} from "../../shared/contracts";
 
 async function postJson<TResponse>(url: string, payload: unknown): Promise<TResponse> {
   let response: Response;
@@ -27,6 +36,10 @@ export function requestAssist(payload: AssistRequest) {
 
 export function requestLabelPage(payload: LabelPageRequest) {
   return postJson<LabelPageResponse>("/api/ai/label-page", payload);
+}
+
+export function requestTermLabels(payload: TermLabelRequest) {
+  return postJson<TermLabelResponse>("/api/ai/label-terms", payload);
 }
 
 export function requestFinalSummary(payload: FinalizeRequest) {

@@ -48,6 +48,17 @@ export type SelectedContext = {
   source: "left-pdf" | "right-handout" | "assistant" | "unknown";
   sentenceId?: string;
   labels?: SentenceLabel[];
+  clickedTerm?: string;
+  termLabel?: TermLabel;
+};
+
+export type ClickedTermContext = {
+  term: string;
+  pageLabel: string;
+  pageNumber?: number;
+  pageText: string;
+  nearbyContext?: string;
+  source: "left-pdf" | "right-handout" | "assistant" | "unknown";
 };
 
 export type StudyLogEntry = {
@@ -92,6 +103,41 @@ export type PdfSentenceIndex = {
   pdfName: string;
   pages: PageSentenceIndex[];
   createdAt: string;
+};
+
+export type TermLabel = {
+  term: string;
+  normalized: string;
+  chinese: string;
+  definition?: string;
+  isProperNoun?: boolean;
+  source?: "deepseek" | "mock" | "local";
+  updatedAt?: string;
+};
+
+export type TermLabelIndex = {
+  pdfId: string;
+  pdfName: string;
+  model?: string;
+  labels: TermLabel[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TermLabelRequest = {
+  courseTitle?: string;
+  pdfName?: string;
+  pdfId?: string;
+  terms: string[];
+  contextText?: string;
+  language?: "zh-CN";
+};
+
+export type TermLabelResponse = {
+  labels: TermLabel[];
+  mock?: boolean;
+  model?: string;
+  error?: string;
 };
 
 export type SentenceLabel = {

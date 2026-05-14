@@ -24,7 +24,8 @@ http://localhost:5173
 ```env
 DEEPSEEK_API_KEY=你的 key
 DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
-DEEPSEEK_MODEL=deepseek-chat
+DEEPSEEK_MODEL=deepseek-v4-pro
+DEEPSEEK_REASONING=true
 MOCK_AI=false
 APP_PORT=5173
 ```

@@ -90,3 +90,13 @@ Next Codex run must execute `docs/CODEX_GOAL_PROMPT.md`, install deps, run typec
 - Persisted assistant move coordinates through workspace settings with small localStorage fallback preferences.
 - Added Playwright smoke coverage for continuous right-PDF rendering and movable fixed assistant behavior.
 - Final verification passed: `npm run typecheck`, `npm run test`, `npm run build`, and `SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/continuous-movable-final-3 npm run smoke:real-pdf`.
+
+## Term label helper correction - 2026-05-14
+- Stopped relying on browser translation for the PDF workflow because browser translation can mutate hidden PDF text and break word alignment.
+- Marked PDF text layers as `translate="no"`.
+- Added a DeepSeek-backed `/api/ai/label-terms` route using the default `deepseek-v4-pro` model and reasoning-enabled request settings.
+- Added `server/prompts/termLabels.ts` for the term-label prompt.
+- Added frontend extraction of deduplicated PDF terms and workspace cache writes under `cache/term-labels/`.
+- Changed the helper into a clicked-word label surface: `term：中文义。定义`.
+- Removed unused assistant AI UI components from `src/components/assistant/`.
+- Real smoke passed with `SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/term-label-pass npm run smoke:real-pdf`.
