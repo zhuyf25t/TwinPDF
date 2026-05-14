@@ -11,6 +11,7 @@ export const WORKSPACE_DIRS = [
   "cache",
   "cache/sentences",
   "cache/page-labels",
+  "cache/term-index",
   "cache/term-labels",
   "cache/pdf-index"
 ];
@@ -136,6 +137,10 @@ export async function readTermLabelCache<T>(workspace: WorkspaceRef, pdfId: stri
 
 export async function writeTermLabelCache(workspace: WorkspaceRef, pdfId: string, data: unknown) {
   await writeJson(workspace.handle, `cache/term-labels/${safeName(pdfId)}.json`, data);
+}
+
+export async function writeTermIndexCache(workspace: WorkspaceRef, pdfId: string, data: unknown) {
+  await writeJson(workspace.handle, `cache/term-index/${safeName(pdfId)}.json`, data);
 }
 
 export async function readText(root: any, path: string, fallback = "") {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractTermsFromPdfIndex, getLocalTermLabel, labelArrayToMap, mergeTermLabels, normalizeTermKey } from "../../src/lib/pdf/terms";
+import { buildTermInventory, extractTermsFromPdfIndex, getLocalTermLabel, labelArrayToMap, mergeTermLabels, normalizeTermKey } from "../../src/lib/pdf/terms";
 import type { PdfSentenceIndex } from "../../src/shared/contracts";
 
 describe("term extraction and cache helpers", () => {
@@ -33,6 +33,41 @@ describe("term extraction and cache helpers", () => {
     expect(label?.normalized).toBe("are");
     expect(label?.source).toBe("local");
     expect(label?.chinese).toContain("是");
+  });
+
+  it("builds a complete upload-time term inventory with counts and pages", () => {
+    const index: PdfSentenceIndex = {
+      pdfId: "demo",
+      pdfName: "demo.pdf",
+      createdAt: "now",
+      pages: [
+        {
+          pdfId: "demo",
+          pdfName: "demo.pdf",
+          pageNumber: 7,
+          pageText: "Are contiguous pages contiguous in virtual memory?",
+          sentences: [],
+          createdAt: "now"
+        },
+        {
+          pdfId: "demo",
+          pdfName: "demo.pdf",
+          pageNumber: 8,
+          pageText: "Contiguous memory is not always physically contiguous.",
+          sentences: [],
+          createdAt: "now"
+        }
+      ]
+    };
+
+    const inventory = buildTermInventory(index);
+    const contiguous = inventory.terms.find((entry) => entry.normalized === "contiguous");
+    const are = inventory.terms.find((entry) => entry.normalized === "are");
+
+    expect(inventory.totalUniqueTerms).toBeGreaterThan(0);
+    expect(contiguous?.count).toBe(4);
+    expect(contiguous?.pages).toEqual([7, 8]);
+    expect(are?.firstPage).toBe(7);
   });
 
   it("merges labels without duplicating repeated terms", () => {

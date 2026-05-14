@@ -97,6 +97,7 @@ async function main() {
   assertWorkspaceFile(minimalDump, "sources/lec08-vm-malloc.pdf");
   assertWorkspaceFile(minimalDump, "handouts/imported-handouts/lec08_vm_malloc_super_detailed_guide.pdf");
   assertWorkspaceFile(minimalDump, "cache/sentences/");
+  assertWorkspaceFile(minimalDump, "cache/term-index/");
   assertWorkspaceFile(minimalDump, "cache/term-labels/");
 
   console.log(JSON.stringify({

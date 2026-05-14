@@ -124,6 +124,24 @@ export type TermLabelIndex = {
   updatedAt: string;
 };
 
+export type TermInventoryEntry = {
+  term: string;
+  normalized: string;
+  count: number;
+  pages: number[];
+  firstPage: number;
+};
+
+export type TermInventoryIndex = {
+  pdfId: string;
+  pdfName: string;
+  totalUniqueTerms: number;
+  totalOccurrences: number;
+  terms: TermInventoryEntry[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type TermLabelRequest = {
   courseTitle?: string;
   pdfName?: string;

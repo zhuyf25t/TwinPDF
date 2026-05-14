@@ -6,7 +6,18 @@ import { WorkspaceGate } from "./components/workspace/WorkspaceGate";
 import { requestAiHealth, requestFinalSummary, requestLabelPage, requestTermLabels } from "./lib/ai/client";
 import { buildFinalSummaryMarkdown, ensureFinalSummaryMarkdown } from "./lib/markdown";
 import { buildNearbyContext, makePdfId } from "./lib/pdf/sentence";
-import { buildTermContext, extractTermsFromPdfIndex, getLocalTermLabel, labelArrayToMap, makeTermLabelIndex, mergeTermLabels, normalizeTermKey } from "./lib/pdf/terms";
+import {
+  buildTermContext,
+  buildTermInventory,
+  buildTermInventoryHint,
+  extractTermsFromPdfIndex,
+  findTermInInventory,
+  getLocalTermLabel,
+  labelArrayToMap,
+  makeTermLabelIndex,
+  mergeTermLabels,
+  normalizeTermKey
+} from "./lib/pdf/terms";
 import {
   copyFileToWorkspace,
   loadWorkspaceData,
@@ -17,6 +28,7 @@ import {
   saveStudyLog,
   writePageLabels,
   writeSentenceCache,
+  writeTermIndexCache,
   writeTermLabelCache
 } from "./lib/workspace/fsAccess";
 import type {
@@ -25,6 +37,7 @@ import type {
   PdfSentenceIndex,
   SelectedContext,
   StudyLogEntry,
+  TermInventoryIndex,
   TermLabel,
   TermLabelIndex,
   WorkspaceData,
@@ -65,6 +78,7 @@ export default function App() {
   const [savedSummaryPath, setSavedSummaryPath] = useState<string | null>(null);
   const [status, setStatus] = useState("请选择学习工作区");
   const [rightPdfContext, setRightPdfContext] = useState("");
+  const [leftTermInventoryIndex, setLeftTermInventoryIndex] = useState<TermInventoryIndex | null>(null);
   const [leftPdfTermIndex, setLeftPdfTermIndex] = useState<TermLabelIndex | null>(null);
   const [splitPercent, setSplitPercent] = useState(initialSplitPercent);
   const [isResizingSplit, setIsResizingSplit] = useState(false);
@@ -139,6 +153,7 @@ export default function App() {
   async function handlePdfFileLoaded(file: File) {
     if (!workspace) return;
     setStatus(`已导入 PDF：${file.name}，正在提取页面文本和句子...`);
+    setLeftTermInventoryIndex(null);
     setLeftPdfTermIndex(makeTermLabelIndex(makePdfId(file), file.name, []));
     await copyFileToWorkspace(workspace, file, `sources/${safeName(file.name)}`);
     setWorkspaceData((data) => data
@@ -178,6 +193,11 @@ export default function App() {
   async function ensureTermLabels(index: PdfSentenceIndex) {
     if (!workspace) return;
     const aiHealth = await requestAiHealth().catch(() => null);
+    const inventory = buildTermInventory(index);
+    setLeftTermInventoryIndex(inventory);
+    await writeTermIndexCache(workspace, index.pdfId, inventory);
+    setStatus(`词表已写入工作区：${inventory.totalUniqueTerms} 个去重词，${inventory.totalOccurrences} 次出现；开始生成中文释义。`);
+
     const emptyIndex = makeTermLabelIndex(index.pdfId, index.pdfName, []);
     const cached = await readTermLabelCache<TermLabelIndex>(workspace, index.pdfId, emptyIndex);
     const canReuseCache = cached.labels?.length && isReusableTermLabelCache(cached, aiHealth);
@@ -232,11 +252,12 @@ export default function App() {
       ? labelArrayToMap(leftPdfTermIndex?.labels || []).get(key)
       : undefined;
     const localLabel = key ? getLocalTermLabel(payload.term) : undefined;
+    const inventoryEntry = key ? findTermInInventory(leftTermInventoryIndex, payload.term) : undefined;
     const termLabel: TermLabel = cachedLabel || localLabel || {
       term: payload.term,
       normalized: key,
       chinese: "标注中",
-      definition: "词义缓存还在生成；稍后会自动补上。",
+      definition: buildTermInventoryHint(inventoryEntry),
       source: "local"
     };
 

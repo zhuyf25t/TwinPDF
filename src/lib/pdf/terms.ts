@@ -1,4 +1,4 @@
-import type { PdfSentenceIndex, TermLabel, TermLabelIndex } from "../../shared/contracts";
+import type { PdfSentenceIndex, TermInventoryEntry, TermInventoryIndex, TermLabel, TermLabelIndex } from "../../shared/contracts";
 
 const WORD_RE = /[A-Za-z][A-Za-z0-9]*(?:[-_/&][A-Za-z0-9]+)*/g;
 const MAX_TERMS = 1400;
@@ -51,22 +51,71 @@ export function getLocalTermLabel(term: string): TermLabel | undefined {
 }
 
 export function extractTermsFromPdfIndex(index: PdfSentenceIndex) {
-  const seen = new Set<string>();
-  const terms: string[] = [];
+  return buildTermInventory(index).terms
+    .filter((entry) => shouldKeepTerm(entry.term, entry.normalized))
+    .map((entry) => entry.term)
+    .slice(0, MAX_TERMS);
+}
+
+export function buildTermInventory(index: PdfSentenceIndex): TermInventoryIndex {
+  const byKey = new Map<string, TermInventoryEntry>();
+  let totalOccurrences = 0;
 
   for (const page of index.pages) {
     const text = page.pageText || page.sentences.map((sentence) => sentence.text).join(" ");
+    const seenOnPage = new Set<string>();
+
     for (const match of text.matchAll(WORD_RE)) {
       const term = match[0].trim();
       const key = normalizeTermKey(term);
-      if (!shouldKeepTerm(term, key) || seen.has(key)) continue;
-      seen.add(key);
-      terms.push(term);
-      if (terms.length >= MAX_TERMS) return terms;
+      if (!key || /^\d+$/.test(key)) continue;
+      totalOccurrences += 1;
+
+      const existing = byKey.get(key);
+      if (existing) {
+        existing.count += 1;
+        if (!seenOnPage.has(key) && existing.pages.length < 80) existing.pages.push(page.pageNumber);
+      } else {
+        byKey.set(key, {
+          term,
+          normalized: key,
+          count: 1,
+          pages: [page.pageNumber],
+          firstPage: page.pageNumber
+        });
+      }
+      seenOnPage.add(key);
     }
   }
 
-  return terms;
+  const now = new Date().toISOString();
+  const terms = [...byKey.values()].sort((a, b) => {
+    if (a.firstPage !== b.firstPage) return a.firstPage - b.firstPage;
+    return a.normalized.localeCompare(b.normalized);
+  });
+
+  return {
+    pdfId: index.pdfId,
+    pdfName: index.pdfName,
+    totalUniqueTerms: terms.length,
+    totalOccurrences,
+    terms,
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+export function findTermInInventory(inventory: TermInventoryIndex | null | undefined, term: string) {
+  const key = normalizeTermKey(term);
+  if (!key || !inventory) return undefined;
+  return inventory.terms.find((entry) => entry.normalized === key);
+}
+
+export function buildTermInventoryHint(entry: TermInventoryEntry | undefined) {
+  if (!entry) return "这个词暂时不在预分词表里，正在单词级补标。";
+  const pagePreview = entry.pages.slice(0, 6).join(", ");
+  const more = entry.pages.length > 6 ? " 等页" : " 页";
+  return `已在上传时分词入库：出现 ${entry.count} 次，见第 ${pagePreview}${more}；DeepSeek 释义生成中。`;
 }
 
 export function buildTermContext(index: PdfSentenceIndex, maxChars = 5200) {

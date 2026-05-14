@@ -270,3 +270,33 @@ Additional checks added in this pass:
 - A local fallback label no longer counts as a cache hit.
 - Any clicked term missing from the persistent term-label cache triggers a one-term DeepSeek update.
 - DeepSeek results overwrite the temporary/local display and are written back to `cache/term-labels/`.
+
+## Latest Upload Term Index Smoke
+
+Date: 2026-05-15
+
+Command:
+
+```bash
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/upload-term-index-pass npm run smoke:real-pdf
+```
+
+Result:
+
+```json
+{
+  "ok": true,
+  "appUrl": "http://localhost:9999",
+  "leftPdf": "lec08-vm-malloc.pdf",
+  "rightPdf": "lec08_vm_malloc_super_detailed_guide.pdf",
+  "workspaceFiles": 11,
+  "assistant": "selection-only"
+}
+```
+
+Additional checks added in this pass:
+
+- Uploading the left PDF writes a full document term inventory to `cache/term-index/`.
+- The term inventory records normalized words, occurrence counts, first page, and page list.
+- `cache/term-labels/` remains the separate DeepSeek explanation cache.
+- When a clicked word is not labeled yet, the helper now reports that the word is already in the upload-time inventory while DeepSeek generates the explanation.
