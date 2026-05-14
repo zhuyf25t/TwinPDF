@@ -60,7 +60,7 @@ export function PdfPane({
   showStatus = false,
   showSelectTool = false,
   showThumbnails = false,
-  showZoomControls = false,
+  showZoomControls = true,
   initialZoom = 0.6,
   onSelectionChange,
   onWordClick,
@@ -292,9 +292,8 @@ export function PdfPane({
           <button className="icon-button" aria-label="下一页" title="下一页" disabled={!pdf || pageNumber >= pageCount} onClick={() => goToPage(pageNumber + 1)}>›</button>
           {showZoomControls && (
             <>
-              <button className="icon-button" aria-label="缩小" title="缩小" onClick={() => setZoom((z) => Math.max(0.6, Number((z - 0.1).toFixed(1))))}>−</button>
-              <span className="page-pill">{Math.round(zoom * 100)}%</span>
-              <button className="icon-button" aria-label="放大" title="放大" onClick={() => setZoom((z) => Math.min(2, Number((z + 0.1).toFixed(1))))}>+</button>
+              <button className="icon-button zoom-button zoom-out" aria-label="缩小" title="缩小" onClick={() => setZoom((z) => Math.max(0.45, Number((z - 0.1).toFixed(2))))}>−</button>
+              <button className="icon-button zoom-button zoom-in" aria-label="放大" title="放大" onClick={() => setZoom((z) => Math.min(2.2, Number((z + 0.1).toFixed(2))))}>+</button>
             </>
           )}
           {showSelectTool && <span className="select-tool-pill">选择文本</span>}

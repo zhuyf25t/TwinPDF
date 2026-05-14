@@ -165,3 +165,35 @@ Additional checks added in this pass:
 - Clicking an English word in the left PDF shows a `term：中文` label in the small helper.
 - The helper label surface is `lang="zh-CN"` and `translate="no"`; TwinPDF owns the translation/definition instead of relying on browser translation.
 - The new DeepSeek prompt lives under `server/prompts/`.
+
+## Latest Resizable Reader Smoke
+
+Date: 2026-05-14
+
+Command:
+
+```bash
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/resizable-reader-pass npm run smoke:real-pdf
+```
+
+Result:
+
+```json
+{
+  "ok": true,
+  "appUrl": "http://localhost:9999",
+  "leftPdf": "lec08-vm-malloc.pdf",
+  "rightPdf": "lec08_vm_malloc_super_detailed_guide.pdf",
+  "workspaceFiles": 59,
+  "selectedText": "Lecture：课件词汇",
+  "assistant": "selection-only"
+}
+```
+
+Additional checks added in this pass:
+
+- Both PDF panes expose compact zoom out / zoom in buttons.
+- The toolbar no longer shows a zoom percentage.
+- The center divider is visible, has `col-resize`, and can be dragged horizontally.
+- Dragging the divider changes the left/right pane widths without changing workspace height.
+- Latest screenshots are in `docs/qa/screenshots/resizable-reader-pass/`.

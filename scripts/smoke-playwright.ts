@@ -45,6 +45,8 @@ async function main() {
   await page.waitForSelector(".right-pdf-pane .pdf-text-layer span", { timeout: 60_000 });
   await expect(page.locator(".right-pdf-pane .page-pill").first()).toContainText("/ 102", { timeout: 15_000 });
   await assertRightPdfCanvas(page);
+  await assertPdfZoomControls(page);
+  await assertWorkspaceDividerCanResize(page);
   await page.waitForFunction(() => {
     const dump = (window as any).__twinpdfWorkspaceDump?.();
     return dump?.files?.some((file: string) => file.includes("cache/term-labels/"));
@@ -298,6 +300,61 @@ async function exerciseMinimalDock(page: Page) {
   await assertDockGeometry(page);
   await assertWorkspaceHeightStable(page, workspaceBox.height);
   await assertAssistantLayout(page);
+}
+
+async function assertPdfZoomControls(page: Page) {
+  const leftPane = page.locator(".left-pdf-pane");
+  const rightPane = page.locator(".right-pdf-pane");
+  await expect(leftPane.locator(".zoom-out")).toBeVisible();
+  await expect(leftPane.locator(".zoom-in")).toBeVisible();
+  await expect(rightPane.locator(".zoom-out")).toBeVisible();
+  await expect(rightPane.locator(".zoom-in")).toBeVisible();
+  await expect(leftPane.locator(".toolbar-right")).not.toContainText("%");
+  await expect(rightPane.locator(".toolbar-right")).not.toContainText("%");
+
+  const before = await leftPane.locator("canvas").first().boundingBox();
+  await leftPane.locator(".zoom-in").click();
+  await page.waitForTimeout(350);
+  const after = await leftPane.locator("canvas").first().boundingBox();
+  if (!before || !after || after.width <= before.width + 12) {
+    throw new Error(`Left PDF zoom-in did not enlarge the page: before=${before?.width}, after=${after?.width}`);
+  }
+  await leftPane.locator(".zoom-out").click();
+  await page.waitForTimeout(180);
+}
+
+async function assertWorkspaceDividerCanResize(page: Page) {
+  const divider = page.locator(".workspace-divider");
+  await expect(divider).toBeVisible();
+  const cursor = await divider.evaluate((node) => window.getComputedStyle(node).cursor);
+  if (cursor !== "col-resize") {
+    throw new Error(`Workspace divider cursor should be col-resize, got ${cursor}.`);
+  }
+
+  const workspaceBox = await page.locator(".workspace").boundingBox();
+  const leftBefore = await page.locator(".left-pdf-pane").boundingBox();
+  const rightBefore = await page.locator(".right-pdf-pane").boundingBox();
+  const dividerBox = await divider.boundingBox();
+  if (!workspaceBox || !leftBefore || !rightBefore || !dividerBox) {
+    throw new Error("Workspace divider geometry is unavailable.");
+  }
+
+  await page.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(dividerBox.x + dividerBox.width / 2 + 120, dividerBox.y + dividerBox.height / 2);
+  await page.mouse.up();
+  await page.waitForTimeout(180);
+
+  const leftAfter = await page.locator(".left-pdf-pane").boundingBox();
+  const rightAfter = await page.locator(".right-pdf-pane").boundingBox();
+  if (!leftAfter || !rightAfter) throw new Error("Pane geometry unavailable after divider drag.");
+  if (leftAfter.width <= leftBefore.width + 45) {
+    throw new Error(`Divider drag did not widen the left pane enough: before=${leftBefore.width}, after=${leftAfter.width}`);
+  }
+  if (rightAfter.width >= rightBefore.width - 45) {
+    throw new Error(`Divider drag did not narrow the right pane enough: before=${rightBefore.width}, after=${rightAfter.width}`);
+  }
+  await assertWorkspaceHeightStable(page, workspaceBox.height);
 }
 
 async function exerciseDockModes(page: Page) {

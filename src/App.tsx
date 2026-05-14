@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import { AssistantDock } from "./components/assistant/AssistantDock";
 import { PdfPane } from "./components/pdf/PdfPane";
 import { FinalSummaryModal } from "./components/summary/FinalSummaryModal";
@@ -38,6 +38,18 @@ const initialSelection: SelectedContext = {
   source: "unknown"
 };
 
+const splitStorageKey = "twinpdf.workspace.split";
+
+function clampSplitPercent(value: number) {
+  return Math.max(28, Math.min(72, value));
+}
+
+function initialSplitPercent() {
+  if (typeof window === "undefined") return 50;
+  const stored = Number(window.localStorage.getItem(splitStorageKey));
+  return Number.isFinite(stored) ? clampSplitPercent(stored) : 50;
+}
+
 export default function App() {
   const [workspace, setWorkspace] = useState<WorkspaceRef | null>(null);
   const [workspaceData, setWorkspaceData] = useState<WorkspaceData | null>(null);
@@ -51,6 +63,9 @@ export default function App() {
   const [status, setStatus] = useState("请选择学习工作区");
   const [rightPdfContext, setRightPdfContext] = useState("");
   const [leftPdfTermIndex, setLeftPdfTermIndex] = useState<TermLabelIndex | null>(null);
+  const [splitPercent, setSplitPercent] = useState(initialSplitPercent);
+  const [isResizingSplit, setIsResizingSplit] = useState(false);
+  const resizingSplitRef = useRef(false);
 
   const settings = workspaceData?.settings;
   const studyLog = workspaceData?.studyLog ?? [];
@@ -75,6 +90,10 @@ export default function App() {
       setStatus(`保存学习记录失败：${error instanceof Error ? error.message : String(error)}`);
     });
   }, [workspace, workspaceData?.studyLog]);
+
+  useEffect(() => {
+    window.localStorage.setItem(splitStorageKey, String(Math.round(splitPercent * 10) / 10));
+  }, [splitPercent]);
 
   async function openWorkspace(nextWorkspace: WorkspaceRef) {
     const data = await loadWorkspaceData(nextWorkspace);
@@ -258,13 +277,48 @@ export default function App() {
     setStatus(`最终总结已保存：${saved}`);
   }
 
+  function updateSplitFromPointer(event: PointerEvent<HTMLElement>) {
+    const workspaceBox = event.currentTarget.parentElement?.getBoundingClientRect();
+    if (!workspaceBox) return;
+    const nextPercent = ((event.clientX - workspaceBox.left) / workspaceBox.width) * 100;
+    setSplitPercent(clampSplitPercent(nextPercent));
+  }
+
+  function startSplitResize(event: PointerEvent<HTMLElement>) {
+    resizingSplitRef.current = true;
+    setIsResizingSplit(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    updateSplitFromPointer(event);
+  }
+
+  function moveSplitResize(event: PointerEvent<HTMLElement>) {
+    if (resizingSplitRef.current) updateSplitFromPointer(event);
+  }
+
+  function endSplitResize(event: PointerEvent<HTMLElement>) {
+    resizingSplitRef.current = false;
+    setIsResizingSplit(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function nudgeSplit(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    setSplitPercent((value) => clampSplitPercent(value + (event.key === "ArrowLeft" ? -3 : 3)));
+  }
+
   if (!workspace || !workspaceData || !settings) {
     return <WorkspaceGate onWorkspaceReady={(next) => void openWorkspace(next)} />;
   }
 
   return (
     <div className="app-shell">
-      <main className="workspace">
+      <main
+        className={`workspace ${isResizingSplit ? "is-resizing" : ""}`}
+        style={{ "--left-pane": `${splitPercent}%` } as CSSProperties}
+      >
         <PdfPane
           title="英文课件"
           openLabel="打开"
@@ -276,6 +330,18 @@ export default function App() {
           onWordClick={(word) => void handleWordClick(word)}
           onPdfFileLoaded={(file) => void handlePdfFileLoaded(file)}
           onSentenceIndexReady={(index) => void handleSentenceIndexReady(index)}
+        />
+        <div
+          className="workspace-divider"
+          role="separator"
+          aria-label="Resize PDF panes"
+          aria-orientation="vertical"
+          tabIndex={0}
+          onPointerDown={startSplitResize}
+          onPointerMove={moveSplitResize}
+          onPointerUp={endSplitResize}
+          onPointerCancel={endSplitResize}
+          onKeyDown={nudgeSplit}
         />
         <PdfPane
           title="中文讲义"

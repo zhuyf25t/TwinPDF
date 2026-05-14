@@ -157,10 +157,55 @@
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
-  padding: 8px 10px 10px;
+  grid-template-columns: minmax(280px, var(--left-pane, 50%)) 10px minmax(280px, 1fr);
+  gap: 0;
+  padding: 8px 8px 10px;
   overflow: hidden;
+}
+
+.workspace-divider {
+  min-width: 10px;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  touch-action: none;
+  position: relative;
+  outline: none;
+}
+
+.workspace-divider::before {
+  content: "";
+  width: 1px;
+  height: 100%;
+  background: var(--border);
+}
+
+.workspace-divider::after {
+  content: "";
+  position: absolute;
+  width: 3px;
+  height: min(112px, 28%);
+  border-radius: 999px;
+  background: rgba(111, 69, 40, 0.38);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.workspace-divider:hover::after,
+.workspace-divider:focus-visible::after,
+.workspace.is-resizing .workspace-divider::after {
+  opacity: 1;
+}
+
+.workspace.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.workspace.is-resizing .pdf-page-wrap {
+  pointer-events: none;
 }
 
 .pane {
@@ -302,8 +347,13 @@
   .workspace {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
     padding-left: 10px;
     padding-right: 10px;
+  }
+
+  .workspace-divider {
+    display: none;
   }
 
   .pane-toolbar {
