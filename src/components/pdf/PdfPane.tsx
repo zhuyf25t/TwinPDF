@@ -145,23 +145,26 @@ export function PdfPane({ onSelectionChange, onPdfFileLoaded, onSentenceIndexRea
   return (
     <section className="pane pdf-pane">
       <div className="pane-toolbar">
-        <label className="toolbar-button">
-          打开 PDF
-          <input type="file" accept="application/pdf,.pdf" hidden onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void loadFile(file);
-            event.currentTarget.value = "";
-          }} />
-        </label>
-        <span className="file-name">{fileName}</span>
-        <span className="toolbar-spacer" />
-        <button className="icon-button" disabled={!pdf || pageNumber <= 1} onClick={() => setPageNumber((p) => Math.max(1, p - 1))}>{"<"}</button>
-        <span className="page-pill">{displayPageNumber} / {pageCount}</span>
-        <button className="icon-button" disabled={!pdf || pageNumber >= pageCount} onClick={() => setPageNumber((p) => Math.min(pageCount, p + 1))}>{">"}</button>
-        <button className="icon-button" onClick={() => setZoom((z) => Math.max(0.6, Number((z - 0.1).toFixed(1))))}>-</button>
-        <span className="page-pill">{Math.round(zoom * 100)}%</span>
-        <button className="icon-button" onClick={() => setZoom((z) => Math.min(2, Number((z + 0.1).toFixed(1))))}>+</button>
-        <span className="select-tool-pill">选择文本</span>
+        <div className="toolbar-group toolbar-left">
+          <label className="toolbar-button">
+            打开课件
+            <input type="file" accept="application/pdf,.pdf" hidden onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void loadFile(file);
+              event.currentTarget.value = "";
+            }} />
+          </label>
+          <span className="file-name">{fileName}</span>
+        </div>
+        <div className="toolbar-group toolbar-right">
+          <button className="icon-button" aria-label="上一页" title="上一页" disabled={!pdf || pageNumber <= 1} onClick={() => setPageNumber((p) => Math.max(1, p - 1))}>‹</button>
+          <span className="page-pill">{displayPageNumber} / {pageCount}</span>
+          <button className="icon-button" aria-label="下一页" title="下一页" disabled={!pdf || pageNumber >= pageCount} onClick={() => setPageNumber((p) => Math.min(pageCount, p + 1))}>›</button>
+          <button className="icon-button" aria-label="缩小" title="缩小" onClick={() => setZoom((z) => Math.max(0.6, Number((z - 0.1).toFixed(1))))}>−</button>
+          <span className="page-pill">{Math.round(zoom * 100)}%</span>
+          <button className="icon-button" aria-label="放大" title="放大" onClick={() => setZoom((z) => Math.min(2, Number((z + 0.1).toFixed(1))))}>+</button>
+          <span className="select-tool-pill">选择文本</span>
+        </div>
       </div>
       <div className="pdf-body">
         <aside className="thumb-rail" aria-label="页面缩略图">

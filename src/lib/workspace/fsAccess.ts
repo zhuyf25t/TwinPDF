@@ -255,6 +255,7 @@ function isAppSettings(value: unknown): value is AppSettings {
   if (!value || typeof value !== "object") return false;
   const settings = value as Partial<AppSettings>;
   return typeof settings.assistantHeight === "number"
+    && (settings.assistantMode === undefined || settings.assistantMode === "collapsed" || settings.assistantMode === "compact" || settings.assistantMode === "expanded")
     && typeof settings.inputLocked === "boolean"
     && typeof settings.autoAddLocked === "boolean"
     && (settings.lastLeftPdfName === undefined || typeof settings.lastLeftPdfName === "string")

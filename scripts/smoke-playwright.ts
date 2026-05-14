@@ -58,6 +58,8 @@ async function main() {
   if (translationAttrs.lang !== "en" || translationAttrs.translate !== "yes") {
     throw new Error("Translation surface is not ordinary translatable HTML.");
   }
+  await exerciseDockModes(page);
+  await maybeScreenshot(page, "02-dock-modes.png");
 
   const questionBox = page.locator(".ask-row textarea");
   await questionBox.fill("What is the relation to malloc?");
@@ -66,7 +68,7 @@ async function main() {
   await expect(questionBox).toHaveValue("");
   await assertDockGeometry(page);
   await assertAssistantLayout(page);
-  await maybeScreenshot(page, "02-after-answer.png");
+  await maybeScreenshot(page, "03-after-answer.png");
 
   await page.locator(".save-chip").click();
   await expect(page.locator(".success-pill").first()).toContainText("加入成功", { timeout: 10_000 });
@@ -81,7 +83,7 @@ async function main() {
   await page.setViewportSize({ width: 390, height: 780 });
   await assertDockGeometry(page, { mobile: true });
   await assertAssistantLayout(page);
-  await maybeScreenshot(page, "03-mobile-dock.png");
+  await maybeScreenshot(page, "04-mobile-dock.png");
   await page.setViewportSize({ width: 1440, height: 950 });
 
   await page.locator(".finalize-button").click();
@@ -90,7 +92,7 @@ async function main() {
   await expect(page.locator(".summary-markdown")).toContainText("课程与文件信息", { timeout: 30_000 });
   await expect(page.locator(".summary-markdown")).toContainText("仍需回看页码", { timeout: 30_000 });
   await expect(page.locator(".summary-markdown")).toContainText("原始问答日志", { timeout: 30_000 });
-  await maybeScreenshot(page, "04-summary-modal.png");
+  await maybeScreenshot(page, "05-summary-modal.png");
   await page.locator(".summary-footer .primary-button").click();
   await expect(page.locator(".summary-footer")).toContainText("已保存", { timeout: 10_000 });
 
@@ -157,7 +159,7 @@ async function assertDockGeometry(page: Page, options: { mobile?: boolean } = {}
     throw new Error(`Assistant dock is outside viewport: ${JSON.stringify({ box, viewport })}`);
   }
   const bottomGap = viewport.height - bottom;
-  const expectedGap = options.mobile ? 10 : 16;
+  const expectedGap = 10;
   if (Math.abs(bottomGap - expectedGap) > 4) {
     throw new Error(`Assistant dock bottom gap out of target range: ${bottomGap}px`);
   }
@@ -175,6 +177,46 @@ async function assertDockGeometry(page: Page, options: { mobile?: boolean } = {}
   if (!options.mobile && box.height < 260) {
     throw new Error(`Assistant dock too short: ${box.height}px`);
   }
+}
+
+async function exerciseDockModes(page: Page) {
+  const compactBox = await page.locator(".assistant-dock").boundingBox();
+  if (!compactBox) throw new Error("Missing compact dock.");
+
+  await page.locator(".dock-toggle-button").click();
+  await page.waitForTimeout(120);
+  const expandedBox = await page.locator(".assistant-dock").boundingBox();
+  if (!expandedBox || expandedBox.height < compactBox.height + 60) {
+    throw new Error("Expanded assistant dock did not grow enough.");
+  }
+  await assertDockGeometry(page);
+  await assertAssistantLayout(page);
+
+  const handleBox = await page.locator(".dock-resize-handle").boundingBox();
+  if (!handleBox) throw new Error("Missing assistant resize handle.");
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y - 55);
+  await page.mouse.up();
+  await page.waitForTimeout(120);
+  await assertDockGeometry(page);
+
+  await page.locator(".dock-toggle-button").click();
+  await page.waitForTimeout(120);
+  await assertDockGeometry(page);
+  await assertAssistantLayout(page);
+
+  await page.locator(".dock-icon-button").click();
+  await page.waitForTimeout(120);
+  const collapsedBox = await page.locator(".assistant-dock").boundingBox();
+  if (!collapsedBox || collapsedBox.height > 60) {
+    throw new Error(`Collapsed assistant dock is too tall: ${collapsedBox?.height}`);
+  }
+
+  await page.locator(".dock-icon-button").click();
+  await page.waitForTimeout(120);
+  await assertDockGeometry(page);
+  await assertAssistantLayout(page);
 }
 
 async function assertAssistantLayout(page: Page) {

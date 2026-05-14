@@ -72,7 +72,7 @@ export function FinalSummaryModal({ open, markdown, loading, error, entries, sav
             ))}
           </aside>
           <main className="summary-preview">
-            <div className="summary-preview-title">Markdown 预览</div>
+            <div className="summary-preview-title">个人子讲义预览</div>
             {loading && <p>正在生成个人子讲义……</p>}
             {error && <p className="error-text">{error}</p>}
             {canUseMarkdown && <article className="markdown-preview summary-markdown" dangerouslySetInnerHTML={{ __html: previewHtml }} />}

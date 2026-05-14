@@ -1,0 +1,62 @@
+@media (max-width: 1119px) {
+  .assistant-dock {
+    left: 50%;
+    width: calc(100vw - 24px);
+  }
+
+  .assistant-command-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .mode-group,
+  .lock-group {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 820px) {
+  .assistant-stage {
+    flex-basis: min(430px, 58vh);
+    min-height: min(430px, 58vh);
+  }
+
+  .assistant-dock.dock-compact {
+    height: min(416px, calc(58vh - 16px)) !important;
+  }
+
+  .assistant-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(42px, 0.65fr) minmax(42px, 0.65fr) minmax(72px, 1fr);
+  }
+
+  .answer-zone {
+    grid-column: auto;
+  }
+
+  .selected-text,
+  .translation-surface {
+    max-height: 58px;
+  }
+}
+
+@media (max-width: 640px) {
+  .assistant-header {
+    align-items: flex-start;
+  }
+
+  .assistant-title {
+    flex-wrap: wrap;
+  }
+
+  .assistant-command-row {
+    grid-template-columns: 1fr;
+  }
+
+  .lock-group {
+    justify-content: flex-start;
+  }
+
+  .ask-row {
+    grid-template-columns: minmax(0, 1fr) 70px;
+  }
+}

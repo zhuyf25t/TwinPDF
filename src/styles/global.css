@@ -96,6 +96,7 @@ code {
   color: var(--text-soft);
   padding: 7px 11px;
   box-shadow: 0 1px 2px rgba(70, 50, 28, 0.04);
+  white-space: nowrap;
 }
 
 .toolbar-button:hover,

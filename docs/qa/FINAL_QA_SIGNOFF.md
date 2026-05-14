@@ -1,0 +1,40 @@
+# Final QA Signoff
+
+Date: 2026-05-14
+
+## Commands
+
+```bash
+npm run typecheck
+npm run test
+npm run build
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/round-3-final3 npm run smoke:real-pdf
+```
+
+## Results
+
+- `npm run typecheck`: passed.
+- `npm run test`: passed, 16 tests.
+- `npm run build`: passed with the expected Vite PDF worker chunk-size warning.
+- `npm run smoke:real-pdf`: passed with the two real lec8 PDFs.
+
+## Product Score
+
+Final score is recorded in `docs/qa/PRODUCT_SCORE.md`.
+
+- Lowest final category: 8.9.
+- Final average: 9.04.
+- DONE threshold: all categories >= 8 and average >= 8.8.
+
+## Screenshot Evidence
+
+- `docs/qa/screenshots/round-1.png`
+- `docs/qa/screenshots/round-2.png`
+- `docs/qa/screenshots/round-3.png`
+- `docs/qa/screenshots/round-3-final3/03-after-answer.png`
+- `docs/qa/screenshots/round-3-final3/04-mobile-dock.png`
+- `docs/qa/screenshots/round-3-final3/05-summary-modal.png`
+
+## Signoff
+
+PASS. TwinPDF now meets the requested UI/UX autopilot loop requirements for the local mock-AI development environment and the real lec8 PDF smoke test.

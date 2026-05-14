@@ -50,3 +50,11 @@ Next Codex run must execute `docs/CODEX_GOAL_PROMPT.md`, install deps, run typec
 - Hardened the Playwright smoke test with screenshot capture, realistic multi-span PDF selection, dock viewport/width/height assertions, internal non-overlap checks, mobile dock screenshot, required final-summary heading checks, and workspace artifact assertions.
 - Final screenshots were written to `F:\tmp\twinpdf-final-ui`; real PDF smoke passed with the two lec8 PDFs and selected text `Lecture 8 Virtual Memory & Memory Management Mingyu Gao gaomy@tsinghua.edu.cn`.
 - Final verification after this UI pass passed: `npm run typecheck`, `npm run test`, `npm run build`, and `SMOKE_SCREENSHOT_DIR=F:\tmp\twinpdf-final-ui npm run smoke:real-pdf`.
+
+## Autopilot UI product loop - 2026-05-14
+- Created `docs/qa/` evidence for the requested product loop: UI audits, fixes, self-review, product score, UX decision, real-file smoke report, screenshots, and final QA signoff.
+- Round 1 declared the prior UI not DONE: functional but still too much like an overlay demo.
+- Round 2 moved AI Assist into the AppShell bottom layout, persisted `collapsed` / `compact` / `expanded`, removed fake 360px pane padding, cleaned toolbar grouping, and made the assistant command row clearer.
+- Round 3 tightened compact mode, added dock-mode smoke coverage for expand/drag/collapse, and confirmed the assistant supports the documents without covering them.
+- Final product score: 9.04 average, all categories >= 8, with reading comfort and AI Assist non-obstruction at 9+.
+- Final verification passed: `npm run typecheck`, `npm run test`, `npm run build`, and `SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/round-3-final3 npm run smoke:real-pdf`.

@@ -1,4 +1,5 @@
 export type AssistMode = "explain" | "translate" | "example" | "question";
+export type AssistantDockMode = "collapsed" | "compact" | "expanded";
 
 export type WorkspaceManifest = {
   schemaVersion: 1;
@@ -10,6 +11,7 @@ export type WorkspaceManifest = {
 
 export type AppSettings = {
   assistantHeight: number;
+  assistantMode: AssistantDockMode;
   inputLocked: boolean;
   autoAddLocked: boolean;
   lastLeftPdfName?: string;
@@ -17,7 +19,8 @@ export type AppSettings = {
 };
 
 export const defaultSettings: AppSettings = {
-  assistantHeight: 340,
+  assistantHeight: 316,
+  assistantMode: "compact",
   inputLocked: false,
   autoAddLocked: false
 };

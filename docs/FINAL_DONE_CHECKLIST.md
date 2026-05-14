@@ -49,6 +49,9 @@ Codex must not declare DONE until every item is checked.
 - [x] UI is Chinese by default.
 - [x] UI uses the warm ivory / soft beige TwinPDF craft style, not the earlier blue-white demo style.
 - [x] Left/right reading panes are stable, independently scrolling, and do not overflow on the real smoke viewport.
+- [x] AI Assist is part of the AppShell bottom layout and no longer covers the reading panes.
+- [x] `docs/qa/PRODUCT_SCORE.md` final score has every category >= 8 and average >= 8.8.
+- [x] Three UI/UX self-iteration rounds are recorded under `docs/qa/`.
 - [x] Interface is minimal and practical.
 - [x] No decorative dashboard/bookmark/tag bloat.
 - [x] `WORKLOG.md` is updated.

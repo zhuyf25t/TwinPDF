@@ -4,4 +4,5 @@
 @import "./styles/pdf.css";
 @import "./styles/handout.css";
 @import "./styles/assistant.css";
+@import "./styles/assistant-responsive.css";
 @import "./styles/summary.css";

@@ -184,7 +184,8 @@
   min-height: 46px;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  flex-wrap: nowrap;
   gap: 7px;
   padding: 7px 10px;
   border-bottom: 1px solid var(--border);
@@ -199,6 +200,21 @@
 
 .toolbar-spacer {
   flex: 1 1 auto;
+}
+
+.toolbar-group {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.toolbar-left {
+  flex: 1 1 auto;
+}
+
+.toolbar-right {
+  flex: 0 0 auto;
 }
 
 .file-name,
@@ -280,6 +296,15 @@
     grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
     padding-left: 10px;
     padding-right: 10px;
+  }
+
+  .pane-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .toolbar-right {
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 }
 

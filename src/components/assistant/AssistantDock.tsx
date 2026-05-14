@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { requestAssist } from "../../lib/ai/client";
-import type { AppSettings, AssistMode, SelectedContext, StudyLogEntry } from "../../shared/contracts";
+import type { AppSettings, AssistMode, AssistantDockMode, SelectedContext, StudyLogEntry } from "../../shared/contracts";
+import {
+  emptyAnswer,
+  emptySelection,
+  emptyTranslation,
+  friendlyError,
+  heightForDockMode,
+  makeFingerprint,
+  makeQuestion,
+  modeLabels,
+  type AnswerSnapshot
+} from "./assistantDockUtils";
 
 type AssistantDockProps = {
   courseTitle: string;
@@ -12,62 +23,6 @@ type AssistantDockProps = {
   onSettingsChange: (settings: AppSettings) => void;
   onAddEntry: (entry: StudyLogEntry) => Promise<void> | void;
 };
-
-type AnswerSnapshot = {
-  id: string;
-  fingerprint: string;
-  selectionSignature: string;
-  text: string;
-  question: string;
-  mode: AssistMode;
-  selectedText: string;
-  translationSurface: string;
-  pageContext: string;
-  rightNoteContext: string;
-  pageLabel?: string;
-  pageNumber?: number;
-  source?: SelectedContext["source"];
-  sentenceId?: string;
-};
-
-const modeLabels: Record<AssistMode, string> = {
-  explain: "解释",
-  translate: "翻译",
-  example: "举例",
-  question: "追问"
-};
-
-const emptySelection = "在左侧英文 PDF 中选中一句话或一段文字，这里会立即更新。";
-const emptyTranslation = "这里是普通网页文本，可直接被浏览器翻译。";
-const emptyAnswer = "点击解释，或在下方输入你的问题。";
-
-function defaultQuestionForMode(mode: AssistMode) {
-  if (mode === "translate") return "请解释这段英文的准确含义，并保留关键术语。";
-  if (mode === "example") return "请给一个非常具体的小例子，让我能立刻理解。";
-  if (mode === "question") return "请结合这段原文和本页上下文回答我的问题。";
-  return "请用通俗语言解释这句话在本页中的作用。";
-}
-
-function makeQuestion(mode: AssistMode, question: string) {
-  return question.trim() || defaultQuestionForMode(mode);
-}
-
-function clampDockHeight(height: number) {
-  const viewportMax = typeof window === "undefined" ? 540 : Math.floor(window.innerHeight * 0.55);
-  return Math.max(280, Math.min(viewportMax, Number.isFinite(height) ? height : 340));
-}
-
-function friendlyError(error: unknown, action: string) {
-  const message = error instanceof Error ? error.message : String(error);
-  if (/Failed to fetch|NetworkError|fetch/i.test(message)) {
-    return `${action}没有完成：本地服务暂时不可用，请确认 npm run dev 还在运行。`;
-  }
-  return `${action}没有完成：${message}`;
-}
-
-function makeFingerprint(selectedText: string, question: string, answer: string) {
-  return [selectedText.trim(), question.trim(), answer.trim()].join("\u001e");
-}
 
 export function AssistantDock({
   courseTitle,
@@ -85,7 +40,6 @@ export function AssistantDock({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
   const [lastAddedFingerprint, setLastAddedFingerprint] = useState<string | null>(null);
   const dragState = useRef<{ startY: number; startHeight: number } | null>(null);
   const questionRef = useRef(question);
@@ -96,7 +50,8 @@ export function AssistantDock({
   const selectedText = hasSelection ? rawSelectedText : emptySelection;
   const translationSurface = hasSelection ? rawSelectedText : "";
   const pageContext = selected.nearbyContext || selected.pageText || "";
-  const height = collapsed ? 44 : clampDockHeight(settings.assistantHeight);
+  const dockMode = settings.assistantMode ?? "compact";
+  const height = heightForDockMode(settings.assistantHeight, dockMode);
 
   const selectionSignature = useMemo(() => [
     rawSelectedText,
@@ -122,8 +77,19 @@ export function AssistantDock({
   }, [question]);
 
   function patchSettings(patch: Partial<AppSettings>) {
-    const nextHeight = patch.assistantHeight === undefined ? settings.assistantHeight : clampDockHeight(patch.assistantHeight);
-    onSettingsChange({ ...settings, ...patch, assistantHeight: nextHeight });
+    const nextMode = patch.assistantMode ?? settings.assistantMode ?? "compact";
+    const rawHeight = patch.assistantHeight === undefined ? settings.assistantHeight : patch.assistantHeight;
+    const nextHeight = heightForDockMode(rawHeight, nextMode);
+    onSettingsChange({ ...settings, ...patch, assistantMode: nextMode, assistantHeight: nextHeight });
+  }
+
+  function setDockMode(nextMode: AssistantDockMode) {
+    const nextHeight = nextMode === "expanded"
+      ? Math.max(settings.assistantHeight, 420)
+      : nextMode === "compact"
+        ? Math.min(Math.max(settings.assistantHeight, 300), 316)
+        : settings.assistantHeight;
+    patchSettings({ assistantMode: nextMode, assistantHeight: nextHeight });
   }
 
   function updateQuestion(value: string) {
@@ -256,15 +222,16 @@ export function AssistantDock({
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
-    setCollapsed(false);
-    dragState.current = { startY: event.clientY, startHeight: clampDockHeight(settings.assistantHeight) };
+    if (dockMode === "collapsed") setDockMode("compact");
+    dragState.current = { startY: event.clientY, startHeight: heightForDockMode(settings.assistantHeight, dockMode === "collapsed" ? "compact" : dockMode) };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
     if (!dragState.current) return;
     const delta = dragState.current.startY - event.clientY;
-    patchSettings({ assistantHeight: dragState.current.startHeight + delta });
+    const nextHeight = dragState.current.startHeight + delta;
+    patchSettings({ assistantHeight: nextHeight, assistantMode: nextHeight > 330 ? "expanded" : "compact" });
   }
 
   function handlePointerEnd(event: PointerEvent<HTMLDivElement>) {
@@ -280,9 +247,10 @@ export function AssistantDock({
   }
 
   const selectedStatus = hasSelection ? `${selected.pageLabel || "当前页"} · 已选中` : "等待选中英文";
+  const modeText = dockMode === "expanded" ? "紧凑" : "展开";
 
   return (
-    <aside className={`assistant-dock ${collapsed ? "collapsed" : ""}`} style={{ height }}>
+    <aside className={`assistant-dock dock-${dockMode}`} style={{ height }}>
       <div
         className="dock-resize-handle"
         title="拖动调整 AI Assist 高度"
@@ -293,32 +261,47 @@ export function AssistantDock({
       />
       <div className="assistant-header">
         <div className="assistant-title">
-          <strong>AI Assist</strong>
-          <span>随堂助手</span>
+          <strong>随堂助手</strong>
+          <span>AI Assist</span>
           <em>{selectedStatus}</em>
         </div>
         <div className="assistant-header-actions">
-          <button className="icon-button" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? "展开 AI Assist" : "收起 AI Assist"}>
-            {collapsed ? "展开" : "收起"}
+          {dockMode !== "collapsed" && (
+            <button className="dock-toggle-button" onClick={() => setDockMode(dockMode === "expanded" ? "compact" : "expanded")}>
+              {modeText}
+            </button>
+          )}
+          <button className="dock-icon-button" onClick={() => setDockMode(dockMode === "collapsed" ? "compact" : "collapsed")} aria-label={dockMode === "collapsed" ? "展开随堂助手" : "收起随堂助手"}>
+            {dockMode === "collapsed" ? "↑" : "−"}
           </button>
         </div>
       </div>
 
-      {!collapsed && (
+      {dockMode !== "collapsed" && (
         <div className="assistant-body">
-          <div className="mode-row">
-            {(Object.keys(modeLabels) as AssistMode[]).map((item) => (
-              <button
-                key={item}
-                className={`mode-chip ${mode === item ? "active" : ""}`}
-                onClick={() => void submit(item)}
-                disabled={loading}
-              >
-                {modeLabels[item]}
+          <div className="mode-row assistant-command-row">
+            <div className="mode-group">
+              {(Object.keys(modeLabels) as AssistMode[]).map((item) => (
+                <button
+                  key={item}
+                  className={`mode-chip ${mode === item ? "active" : ""}`}
+                  onClick={() => void submit(item)}
+                  disabled={loading}
+                >
+                  {modeLabels[item]}
+                </button>
+              ))}
+            </div>
+            <div className="lock-group">
+              <button className={`tiny-lock ${settings.inputLocked ? "active" : ""}`} onClick={() => patchSettings({ inputLocked: !settings.inputLocked })}>
+                {settings.inputLocked ? "输入已锁" : "锁定输入"}
               </button>
-            ))}
+              <button className={`tiny-lock ${settings.autoAddLocked ? "active" : ""}`} onClick={() => patchSettings({ autoAddLocked: !settings.autoAddLocked })}>
+                {settings.autoAddLocked ? "自动加入" : "锁定子讲义"}
+              </button>
+            </div>
             <button className="mode-chip save-chip" onClick={() => void addCurrentAnswer()} disabled={!answerState || loading || saving || alreadyAdded}>
-              {saving ? "正在加入..." : alreadyAdded ? "已加入" : "加入个人子讲义"}
+              {saving ? "加入中..." : alreadyAdded ? "已加入" : "加入子讲义"}
             </button>
             {alreadyAdded && <span className="success-pill">加入成功</span>}
           </div>
@@ -326,7 +309,7 @@ export function AssistantDock({
           <div className="assistant-grid">
             <section className="assistant-box selected-zone">
               <div className="box-title">
-                <span>Selected Text</span>
+                <span>已选原文</span>
                 <button className="text-tool-button" onClick={() => copyText(hasSelection ? rawSelectedText : "")}>复制</button>
               </div>
               <div className={`selected-text ${hasSelection ? "" : "empty-state"}`} lang="en">{selectedText}</div>
@@ -344,7 +327,7 @@ export function AssistantDock({
 
             <section className="assistant-box answer-zone">
               <div className="box-title">
-                <span>AI Answer</span>
+                <span>AI 解释</span>
                 <small>{loading ? "正在思考..." : saving ? "正在保存..." : answerState ? "最新回答" : "等待提问"}</small>
               </div>
               <div className="answer-text" aria-live="polite">
@@ -368,12 +351,6 @@ export function AssistantDock({
                 if ((event.ctrlKey || event.metaKey) && event.key === "Enter") void submit("question");
               }}
             />
-            <button className={`tiny-lock ${settings.inputLocked ? "active" : ""}`} onClick={() => patchSettings({ inputLocked: !settings.inputLocked })}>
-              {settings.inputLocked ? "输入已锁" : "输入不锁"}
-            </button>
-            <button className={`tiny-lock ${settings.autoAddLocked ? "active" : ""}`} onClick={() => patchSettings({ autoAddLocked: !settings.autoAddLocked })}>
-              {settings.autoAddLocked ? "自动加入已锁" : "手动加入"}
-            </button>
             <button className="send-button" disabled={loading} onClick={() => void submit("question")}>
               {loading ? "..." : "发送"}
             </button>
