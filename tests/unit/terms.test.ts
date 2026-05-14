@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractTermsFromPdfIndex, labelArrayToMap, mergeTermLabels, normalizeTermKey } from "../../src/lib/pdf/terms";
+import { extractTermsFromPdfIndex, getLocalTermLabel, labelArrayToMap, mergeTermLabels, normalizeTermKey } from "../../src/lib/pdf/terms";
 import type { PdfSentenceIndex } from "../../src/shared/contracts";
 
 describe("term extraction and cache helpers", () => {
@@ -23,7 +23,16 @@ describe("term extraction and cache helpers", () => {
     expect(terms).toContain("Virtual");
     expect(terms).toContain("memory");
     expect(terms).toContain("malloc");
+    expect(terms).not.toContain("and");
     expect(terms.filter((term) => normalizeTermKey(term) === "memory")).toHaveLength(1);
+  });
+
+  it("labels common function words locally without waiting for AI", () => {
+    const label = getLocalTermLabel("Are");
+
+    expect(label?.normalized).toBe("are");
+    expect(label?.source).toBe("local");
+    expect(label?.chinese).toContain("是");
   });
 
   it("merges labels without duplicating repeated terms", () => {

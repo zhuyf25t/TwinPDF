@@ -6,7 +6,7 @@ import { WorkspaceGate } from "./components/workspace/WorkspaceGate";
 import { requestAiHealth, requestFinalSummary, requestLabelPage, requestTermLabels } from "./lib/ai/client";
 import { buildFinalSummaryMarkdown, ensureFinalSummaryMarkdown } from "./lib/markdown";
 import { buildNearbyContext } from "./lib/pdf/sentence";
-import { buildTermContext, extractTermsFromPdfIndex, labelArrayToMap, makeTermLabelIndex, mergeTermLabels, normalizeTermKey } from "./lib/pdf/terms";
+import { buildTermContext, extractTermsFromPdfIndex, getLocalTermLabel, labelArrayToMap, makeTermLabelIndex, mergeTermLabels, normalizeTermKey } from "./lib/pdf/terms";
 import {
   copyFileToWorkspace,
   loadWorkspaceData,
@@ -226,7 +226,9 @@ export default function App() {
 
   async function handleWordClick(payload: ClickedTermContext) {
     const key = normalizeTermKey(payload.term);
-    const label = key ? labelArrayToMap(leftPdfTermIndex?.labels || []).get(key) : undefined;
+    const label = key
+      ? labelArrayToMap(leftPdfTermIndex?.labels || []).get(key) || getLocalTermLabel(payload.term)
+      : undefined;
     const termLabel: TermLabel = label || {
       term: payload.term,
       normalized: key,
