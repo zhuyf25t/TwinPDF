@@ -9,6 +9,7 @@ Scores are intentionally strict. DONE is not allowed while any item is below 8, 
 | 3 bottom layout pass | 8.6 | 7.8 | 9.2 | 9.0 | 8.4 | 8.9 | 8.9 | 9.2 | 8.75 | Rejected by latest review |
 | 4 fixed overlay pass | 9.1 | 9.0 | 9.2 | 9.0 | 9.0 | 8.9 | 8.9 | 9.2 | 9.04 | DONE allowed |
 | 5 minimal dual-PDF pass | 9.3 | 9.2 | 9.2 | 9.0 | 9.4 | 8.9 | 8.8 | 9.4 | 9.15 | DONE allowed |
+| 6 self-repair visual balance | 9.4 | 9.2 | 9.2 | 9.0 | 9.5 | 8.9 | 8.8 | 9.4 | 9.18 | DONE allowed |
 
 ## Round 1 Notes
 
@@ -30,3 +31,9 @@ Scores are intentionally strict. DONE is not allowed while any item is below 8, 
 - Reading comfort improves because both panes are now PDF readers with no default thumbnail rails and only essential page controls.
 - AI Assist non-obstruction improves because collapsed is now the default and the expanded helper is a small bottom-right card.
 - Visual simplicity improves because duplicate translation panels, extra mode chips, visible status strips, thumbnails, and zoom buttons are removed from the default view.
+
+## Round 6 Notes
+
+- The self-repair pass focused on the actual screenshot composition, not feature count.
+- The left landscape PDF now sits more intentionally in the reading pane instead of sticking to the top and leaving accidental dead space.
+- The product remains dual-PDF and minimal; this was a visual balance correction, not a feature addition.

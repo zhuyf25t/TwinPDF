@@ -11,6 +11,7 @@ npm run build
 SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/round-3-final3 npm run smoke:real-pdf
 SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/round-fixed-overlay npm run smoke:real-pdf
 SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/minimal-pass npm run smoke:real-pdf
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/self-repair-pass npm run smoke:real-pdf
 ```
 
 ## Results
@@ -35,6 +36,7 @@ Final score is recorded in `docs/qa/PRODUCT_SCORE.md`.
 - `docs/qa/screenshots/round-3.png`
 - `docs/qa/screenshots/round-4.png`
 - `docs/qa/screenshots/round-5.png`
+- `docs/qa/screenshots/round-6.png`
 - `docs/qa/screenshots/final.png`
 - `docs/qa/screenshots/minimal-pass/01-workspace-loaded.png`
 - `docs/qa/screenshots/minimal-pass/03-after-answer.png`

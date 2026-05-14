@@ -75,3 +75,9 @@ Next Codex run must execute `docs/CODEX_GOAL_PROMPT.md`, install deps, run typec
 - Collapsed AI Assist by default, reduced it to a small bottom-right card, merged browser translation into the selected-text HTML surface, and reduced mode controls to one `解释` action.
 - Updated smoke to use `.left-pdf-pane` and `.right-pdf-pane`, assert right PDF canvas/text rendering, and verify the dock does not cover toolbars or upper reading areas.
 - Final minimal smoke passed with `SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/minimal-pass npm run smoke:real-pdf`.
+
+## Self-perception repair - 2026-05-14
+- Re-audited the latest screenshot after the user rejected the visual result again.
+- Identified the strongest visible flaw: landscape PDF pages looked stuck to the top of the pane, leaving accidental dead space.
+- Changed PDF page alignment to safe-center pages that fit inside the reading pane while preserving scroll behavior for taller pages.
+- Verified again with the real dual-PDF smoke test and saved `docs/qa/screenshots/self-repair-pass/` plus `round-6.png`.

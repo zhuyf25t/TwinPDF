@@ -60,8 +60,8 @@
 .pdf-page-wrap {
   overflow: auto;
   display: flex;
-  justify-content: flex-start;
-  align-items: flex-start;
+  justify-content: center;
+  align-items: safe center;
   padding: 18px 16px 28px;
   background:
     linear-gradient(180deg, rgba(255, 253, 249, 0.48), rgba(242, 235, 225, 0.78)),
