@@ -29,3 +29,20 @@ Passed.
 - `docs/qa/screenshots/round-fixed-overlay/02-dock-modes.png`
 - `docs/qa/screenshots/round-fixed-overlay/03-after-answer.png`
 - `docs/qa/screenshots/round-fixed-overlay/04-mobile-dock.png`
+
+## Latest Movement Regression
+
+Date: 2026-05-14
+
+Command:
+
+```bash
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/continuous-movable-final-3 npm run smoke:real-pdf
+```
+
+Additional result:
+
+- Dragging the assistant header grip moves the dock by more than 40px.
+- The dock remains `position: fixed` after moving.
+- The move position is written through the normal assistant settings path as `assistantX` and `assistantY`, with localStorage fallback preferences.
+- The workspace height stays unchanged after moving the assistant.

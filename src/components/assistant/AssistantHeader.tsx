@@ -1,3 +1,4 @@
+import type { PointerEventHandler } from "react";
 import type { AssistantDockMode } from "../../shared/contracts";
 
 type AssistantHeaderProps = {
@@ -6,6 +7,10 @@ type AssistantHeaderProps = {
   modeText: string;
   onToggleSize: () => void;
   onToggleCollapse: () => void;
+  onMovePointerDown: PointerEventHandler<HTMLDivElement>;
+  onMovePointerMove: PointerEventHandler<HTMLDivElement>;
+  onMovePointerUp: PointerEventHandler<HTMLDivElement>;
+  onMovePointerCancel: PointerEventHandler<HTMLDivElement>;
 };
 
 export function AssistantHeader({
@@ -13,11 +18,23 @@ export function AssistantHeader({
   selectedStatus,
   modeText,
   onToggleSize,
-  onToggleCollapse
+  onToggleCollapse,
+  onMovePointerDown,
+  onMovePointerMove,
+  onMovePointerUp,
+  onMovePointerCancel
 }: AssistantHeaderProps) {
   return (
-    <div className="assistant-header">
+    <div
+      className="assistant-header"
+      title="拖动移动随堂助手"
+      onPointerDown={onMovePointerDown}
+      onPointerMove={onMovePointerMove}
+      onPointerUp={onMovePointerUp}
+      onPointerCancel={onMovePointerCancel}
+    >
       <div className="assistant-title">
+        <span className="assistant-move-grip" aria-hidden="true" />
         <strong>随堂助手</strong>
         <span>AI Assist</span>
         <em>{selectedStatus}</em>

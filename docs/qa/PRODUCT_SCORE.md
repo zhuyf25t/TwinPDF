@@ -10,6 +10,7 @@ Scores are intentionally strict. DONE is not allowed while any item is below 8, 
 | 4 fixed overlay pass | 9.1 | 9.0 | 9.2 | 9.0 | 9.0 | 8.9 | 8.9 | 9.2 | 9.04 | DONE allowed |
 | 5 minimal dual-PDF pass | 9.3 | 9.2 | 9.2 | 9.0 | 9.4 | 8.9 | 8.8 | 9.4 | 9.15 | DONE allowed |
 | 6 self-repair visual balance | 9.4 | 9.2 | 9.2 | 9.0 | 9.5 | 8.9 | 8.8 | 9.4 | 9.18 | DONE allowed |
+| 7 continuous PDF + movable assistant | 9.5 | 9.3 | 9.2 | 9.0 | 9.5 | 8.9 | 8.8 | 9.6 | 9.23 | DONE allowed |
 
 ## Round 1 Notes
 
@@ -37,3 +38,10 @@ Scores are intentionally strict. DONE is not allowed while any item is below 8, 
 - The self-repair pass focused on the actual screenshot composition, not feature count.
 - The left landscape PDF now sits more intentionally in the reading pane instead of sticking to the top and leaving accidental dead space.
 - The product remains dual-PDF and minimal; this was a visual balance correction, not a feature addition.
+
+## Round 7 Notes
+
+- This round fixes the newest user objection directly: PDF panes now render as a continuous vertical page stack instead of feeling like a one-page-at-a-time viewer.
+- The AI Assist dock can now be moved by dragging the header grip, while the existing top handle still resizes height.
+- The Playwright real-PDF smoke now verifies the right pane renders multiple pages, the assistant remains fixed after moving, and the workspace height stays stable.
+- Screenshot evidence: `docs/qa/screenshots/continuous-movable-final-3/01-workspace-loaded.png` and `docs/qa/screenshots/continuous-movable-final-3/03-after-answer.png`.

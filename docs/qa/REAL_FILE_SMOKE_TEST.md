@@ -70,3 +70,35 @@ Smoke JSON:
 ## Limitation
 
 Headless Playwright uses an in-memory File System Access API stub because the browser directory picker cannot be granted reliably in automation. The application code path still uses real `showDirectoryPicker` in Chrome/Edge, and unit tests cover workspace read/write behavior.
+
+## Latest Continuous Reader And Movable Assistant Smoke
+
+Date: 2026-05-14
+
+Command:
+
+```bash
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/continuous-movable-final-3 npm run smoke:real-pdf
+```
+
+Result:
+
+```json
+{
+  "ok": true,
+  "appUrl": "http://localhost:9999",
+  "leftPdf": "lec08-vm-malloc.pdf",
+  "rightPdf": "lec08_vm_malloc_super_detailed_guide.pdf",
+  "workspaceFiles": 59,
+  "selectedText": "Lecture 8 Virtual Memory & Memory Management Mingyu Gao gaomy@tsinghua.edu.cn"
+}
+```
+
+Additional checks added in this pass:
+
+- Left and right PDF panes render continuous page stacks, not a single isolated page.
+- Page selection no longer falls back to the old sample page number; the selected page context stayed on page 1 in the final smoke.
+- The assistant header has a visible grip and can be dragged to move the fixed dock.
+- The assistant remains `position: fixed` after moving.
+- Workspace height remains stable while resizing, collapsing, expanding, and moving the assistant.
+- Latest screenshots are in `docs/qa/screenshots/continuous-movable-final-3/`.

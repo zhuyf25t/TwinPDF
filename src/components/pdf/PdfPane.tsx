@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import workerSrc from "pdfjs-dist/build/pdf.worker.mjs?url";
 import type { PageSentenceIndex, PdfSentenceIndex, SelectedContext, SentenceRecord } from "../../shared/contracts";
@@ -70,50 +70,40 @@ export function PdfPane({
   const [pageNumber, setPageNumber] = useState(1);
   const [pageState, setPageState] = useState<PageState>({
     pageText: sampleText,
-    pageNumber: 7,
-    sentences: splitIntoSentences(sampleText, 7)
+    pageNumber: 1,
+    sentences: splitIntoSentences(sampleText, 1)
   });
   const [fileName, setFileName] = useState(emptyFileName);
   const [zoom, setZoom] = useState(initialZoom);
+  const [visiblePageCount, setVisiblePageCount] = useState(3);
+  const [pendingScrollPage, setPendingScrollPage] = useState<number | null>(null);
   const [indexStatus, setIndexStatus] = useState("等待导入 PDF");
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const textLayerRef = useRef<HTMLDivElement | null>(null);
+  const pageWrapRef = useRef<HTMLDivElement | null>(null);
+  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const pageCacheRef = useRef<Map<number, PageState>>(new Map());
-  const renderRunRef = useRef(0);
 
   const pageCount = pdf?.numPages ?? 24;
   const displayPageNumber = pdf ? pageNumber : pageState.pageNumber;
   const thumbPages = useMemo(() => buildThumbPages(displayPageNumber, pageCount), [displayPageNumber, pageCount]);
+  const visiblePages = useMemo(
+    () => Array.from({ length: pdf ? Math.min(visiblePageCount, pageCount) : 0 }, (_, index) => index + 1),
+    [pdf, visiblePageCount, pageCount]
+  );
 
   useEffect(() => {
-    if (!pdf) return;
-
     const cached = pageCacheRef.current.get(pageNumber);
-    if (cached) setPageState(cached);
+    if (!cached) return;
+    setPageState(cached);
+    onPageTextReady?.({ fileName, pageNumber: cached.pageNumber, pageText: cached.pageText });
+  }, [fileName, onPageTextReady, pageNumber]);
 
-    const renderRun = renderRunRef.current + 1;
-    renderRunRef.current = renderRun;
-    setIndexStatus(`正在渲染第 ${pageNumber} 页...`);
-
-    renderPage(pdf, pageNumber, zoom, canvasRef.current, textLayerRef.current)
-      .then((page) => {
-        if (!page || renderRunRef.current !== renderRun) return;
-        pageCacheRef.current.set(page.pageNumber, page);
-        setPageState(page);
-        onPageTextReady?.({ fileName, pageNumber: page.pageNumber, pageText: page.pageText });
-        setIndexStatus(page.pageText
-          ? `第 ${page.pageNumber} 页文本已就绪，可选中提问`
-          : `第 ${page.pageNumber} 页未提取到文字，可能是扫描版 PDF`);
-      })
-      .catch((err) => {
-        if (renderRunRef.current !== renderRun) return;
-        setIndexStatus(`PDF 渲染失败：${errorMessage(err)}`);
-      });
-
-    return () => {
-      renderRunRef.current += 1;
-    };
-  }, [pdf, pageNumber, zoom]);
+  useEffect(() => {
+    if (pendingScrollPage === null) return;
+    const node = pageRefs.current.get(pendingScrollPage);
+    if (!node) return;
+    scrollToRenderedPage(node);
+    setPendingScrollPage(null);
+  }, [pendingScrollPage, visiblePageCount]);
 
   async function loadFile(file: File) {
     setFileName(file.name);
@@ -136,6 +126,8 @@ export function PdfPane({
       const doc = await loadingTask.promise;
       setPdf(doc);
       setPageNumber(1);
+      setVisiblePageCount(Math.min(4, doc.numPages));
+      setPendingScrollPage(1);
       setIndexStatus(enableSentenceIndex
         ? `PDF 已打开，共 ${doc.numPages} 页；正在提取全文句子...`
         : `PDF 已打开，共 ${doc.numPages} 页`);
@@ -161,17 +153,94 @@ export function PdfPane({
       const text = normalizePdfText(window.getSelection()?.toString() || "");
       if (!text) return;
 
-      const sentence = findSentenceForSelection(pageState.sentences, text);
+      const selectedPageNumber = findSelectedPageNumber() || pageState.pageNumber;
+      const selectedPageState = pageCacheRef.current.get(selectedPageNumber) || pageState;
+      const sentence = findSentenceForSelection(selectedPageState.sentences, text);
       onSelectionChange?.({
         selectedText: text,
-        pageLabel: `第 ${pageState.pageNumber} 页`,
-        pageNumber: pageState.pageNumber,
-        pageText: pageState.pageText,
-        nearbyContext: buildNearbyContext(pageState.pageText, text),
+        pageLabel: `第 ${selectedPageState.pageNumber} 页`,
+        pageNumber: selectedPageState.pageNumber,
+        pageText: selectedPageState.pageText,
+        nearbyContext: buildNearbyContext(selectedPageState.pageText, text),
         source: selectionSource,
         sentenceId: sentence?.id
       });
-      setIndexStatus(`已选中第 ${pageState.pageNumber} 页文本，可直接提问`);
+      setPageNumber(selectedPageState.pageNumber);
+      setIndexStatus(`已选中第 ${selectedPageState.pageNumber} 页文本，可直接提问`);
+    });
+  }
+
+  const handlePageReady = useCallback((page: PageState) => {
+    pageCacheRef.current.set(page.pageNumber, page);
+    if (page.pageNumber === pageNumber) {
+      setPageState(page);
+      onPageTextReady?.({ fileName, pageNumber: page.pageNumber, pageText: page.pageText });
+    }
+    setIndexStatus(page.pageText
+      ? `第 ${page.pageNumber} 页文本已就绪，可选中提问`
+      : `第 ${page.pageNumber} 页未提取到文字，可能是扫描版 PDF`);
+  }, [fileName, onPageTextReady, pageNumber]);
+
+  function goToPage(nextPage: number) {
+    const bounded = Math.max(1, Math.min(pageCount, nextPage));
+    setVisiblePageCount((count) => Math.max(count, Math.min(pageCount, bounded + 2)));
+    setPageNumber(bounded);
+    setPendingScrollPage(bounded);
+  }
+
+  function handleScroll() {
+    const wrap = pageWrapRef.current;
+    if (!wrap || !pdf) return;
+    if (wrap.scrollTop + wrap.clientHeight > wrap.scrollHeight - 900) {
+      setVisiblePageCount((count) => Math.min(pageCount, count + 3));
+    }
+
+    const wrapBox = wrap.getBoundingClientRect();
+    const focusY = wrapBox.top + wrapBox.height * 0.32;
+    let nearest = pageNumber;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (const [candidatePage, node] of pageRefs.current) {
+      const box = node.getBoundingClientRect();
+      const distance = Math.abs(box.top - focusY);
+      if (distance < nearestDistance) {
+        nearest = candidatePage;
+        nearestDistance = distance;
+      }
+    }
+    if (nearest !== pageNumber) setPageNumber(nearest);
+  }
+
+  function findSelectedPageNumber() {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return undefined;
+
+    const range = selection.getRangeAt(0);
+    const candidates = [selection.anchorNode, selection.focusNode, range.commonAncestorContainer];
+    for (const candidate of candidates) {
+      const element = candidate instanceof Element ? candidate : candidate?.parentElement;
+      const pageNode = element?.closest("[data-page-number]");
+      if (pageNode instanceof HTMLElement && pageNode.dataset.pageNumber) {
+        const page = Number(pageNode.dataset.pageNumber);
+        if (Number.isFinite(page)) return page;
+      }
+    }
+
+    for (const [candidatePage, node] of pageRefs.current) {
+      if (node.contains(range.commonAncestorContainer)) {
+        return candidatePage;
+      }
+    }
+    return undefined;
+  }
+
+  function scrollToRenderedPage(node: HTMLDivElement) {
+    const wrap = pageWrapRef.current;
+    if (!wrap) return;
+    const wrapBox = wrap.getBoundingClientRect();
+    const nodeBox = node.getBoundingClientRect();
+    wrap.scrollTo({
+      top: wrap.scrollTop + nodeBox.top - wrapBox.top - 10,
+      behavior: "auto"
     });
   }
 
@@ -191,9 +260,9 @@ export function PdfPane({
           <span className="file-name">{fileName}</span>
         </div>
         <div className="toolbar-group toolbar-right">
-          <button className="icon-button" aria-label="上一页" title="上一页" disabled={!pdf || pageNumber <= 1} onClick={() => setPageNumber((p) => Math.max(1, p - 1))}>‹</button>
+          <button className="icon-button" aria-label="上一页" title="上一页" disabled={!pdf || pageNumber <= 1} onClick={() => goToPage(pageNumber - 1)}>‹</button>
           <span className="page-pill">{displayPageNumber} / {pageCount}</span>
-          <button className="icon-button" aria-label="下一页" title="下一页" disabled={!pdf || pageNumber >= pageCount} onClick={() => setPageNumber((p) => Math.min(pageCount, p + 1))}>›</button>
+          <button className="icon-button" aria-label="下一页" title="下一页" disabled={!pdf || pageNumber >= pageCount} onClick={() => goToPage(pageNumber + 1)}>›</button>
           {showZoomControls && (
             <>
               <button className="icon-button" aria-label="缩小" title="缩小" onClick={() => setZoom((z) => Math.max(0.6, Number((z - 0.1).toFixed(1))))}>−</button>
@@ -219,11 +288,24 @@ export function PdfPane({
             ))}
           </aside>
         )}
-        <div className="pdf-page-wrap" onMouseUp={captureSelection} onKeyUp={captureSelection}>
+        <div ref={pageWrapRef} className="pdf-page-wrap" onScroll={handleScroll} onMouseUp={captureSelection} onKeyUp={captureSelection}>
           {pdf ? (
-            <div className="pdf-rendered-page">
-              <canvas ref={canvasRef} />
-              <div ref={textLayerRef} className="pdf-text-layer" />
+            <div className="pdf-page-stack">
+              {visiblePages.map((page) => (
+                <PdfPageView
+                  key={`${page}-${zoom}`}
+                  pdf={pdf}
+                  pageNumber={page}
+                  zoom={zoom}
+                  onPageReady={handlePageReady}
+                  onRenderStatus={setIndexStatus}
+                  setPageRef={(node) => {
+                    if (node) pageRefs.current.set(page, node);
+                    else pageRefs.current.delete(page);
+                  }}
+                />
+              ))}
+              {visiblePageCount < pageCount && <div className="pdf-load-more">继续向下滚动加载更多页面</div>}
             </div>
           ) : (
             <SamplePdfPage onMouseUp={captureSelection} />
@@ -325,6 +407,49 @@ function textContentToPageText(textContent: PdfTextContentLike) {
   }
 
   return normalizePdfText(parts.join(""), true);
+}
+
+type PdfPageViewProps = {
+  pdf: PdfDoc;
+  pageNumber: number;
+  zoom: number;
+  onPageReady: (page: PageState) => void;
+  onRenderStatus: (status: string) => void;
+  setPageRef: (node: HTMLDivElement | null) => void;
+};
+
+function PdfPageView({ pdf, pageNumber, zoom, onPageReady, onRenderStatus, setPageRef }: PdfPageViewProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const textLayerRef = useRef<HTMLDivElement | null>(null);
+  const renderRunRef = useRef(0);
+
+  useEffect(() => {
+    const renderRun = renderRunRef.current + 1;
+    renderRunRef.current = renderRun;
+    onRenderStatus(`正在渲染第 ${pageNumber} 页...`);
+
+    renderPage(pdf, pageNumber, zoom, canvasRef.current, textLayerRef.current)
+      .then((page) => {
+        if (!page || renderRunRef.current !== renderRun) return;
+        onPageReady(page);
+      })
+      .catch((error) => {
+        if (renderRunRef.current !== renderRun) return;
+        onRenderStatus(`PDF 渲染失败：${errorMessage(error)}`);
+      });
+
+    return () => {
+      renderRunRef.current += 1;
+    };
+  }, [onPageReady, onRenderStatus, pageNumber, pdf, zoom]);
+
+  return (
+    <div ref={setPageRef} className="pdf-rendered-page" data-page-number={pageNumber}>
+      <canvas ref={canvasRef} />
+      <div ref={textLayerRef} className="pdf-text-layer" />
+      <span className="pdf-page-marker">{pageNumber}</span>
+    </div>
+  );
 }
 
 function buildThumbPages(currentPage: number, pageCount: number) {

@@ -41,6 +41,8 @@ export function makeQuestion(mode: AssistMode, question: string) {
 
 export const assistantHeightStorageKey = "twinpdf.assistant.height";
 export const assistantModeStorageKey = "twinpdf.assistant.mode";
+export const assistantXStorageKey = "twinpdf.assistant.x";
+export const assistantYStorageKey = "twinpdf.assistant.y";
 export const assistantMinHeight = 56;
 export const assistantDefaultHeight = 300;
 export const assistantCompactMinHeight = 260;

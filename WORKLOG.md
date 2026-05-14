@@ -81,3 +81,12 @@ Next Codex run must execute `docs/CODEX_GOAL_PROMPT.md`, install deps, run typec
 - Identified the strongest visible flaw: landscape PDF pages looked stuck to the top of the pane, leaving accidental dead space.
 - Changed PDF page alignment to safe-center pages that fit inside the reading pane while preserving scroll behavior for taller pages.
 - Verified again with the real dual-PDF smoke test and saved `docs/qa/screenshots/self-repair-pass/` plus `round-6.png`.
+
+## Continuous PDF and movable assistant correction - 2026-05-14
+- Addressed the newest user objection that the PDF reader must not feel like a one-page-at-a-time tool.
+- Replaced single-page PDF rendering with a continuous vertical page stack, incremental page loading, per-page refs, and direct internal scrolling for previous/next controls.
+- Fixed selected-text page detection so the assistant receives the actual PDF page context instead of falling back to the old sample page.
+- Made the AI Assist dock movable by dragging the header grip; the top handle remains for height resize.
+- Persisted assistant move coordinates through workspace settings with small localStorage fallback preferences.
+- Added Playwright smoke coverage for continuous right-PDF rendering and movable fixed assistant behavior.
+- Final verification passed: `npm run typecheck`, `npm run test`, `npm run build`, and `SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/continuous-movable-final-3 npm run smoke:real-pdf`.

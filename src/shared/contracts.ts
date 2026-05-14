@@ -12,6 +12,8 @@ export type WorkspaceManifest = {
 export type AppSettings = {
   assistantHeight: number;
   assistantMode: AssistantDockMode;
+  assistantX?: number;
+  assistantY?: number;
   inputLocked: boolean;
   autoAddLocked: boolean;
   lastLeftPdfName?: string;

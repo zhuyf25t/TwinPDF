@@ -111,3 +111,27 @@ Browser smoke with `npm run smoke:real-pdf` verified:
 - Automated smoke uses a File System Access API stub for the directory picker because headless browser automation cannot reliably grant a real OS directory picker. Workspace behavior is separately covered by unit tests and app code uses the real browser File System Access API in normal use.
 - Page labeling runs in the background and is intentionally bounded per page so reading is not blocked.
 - DeepSeek real mode depends on a valid server-side `env.local`; mock mode is used when `MOCK_AI=true` or no key exists.
+
+## Latest Correction: Continuous PDF Reading And Movable Assistant
+
+Date: 2026-05-14
+
+The latest user review rejected the remaining one-page feel and asked why the assistant could not move. This pass addressed both directly:
+
+- PDF panes now render a continuous vertical page stack with incremental loading.
+- Previous/next page buttons scroll the internal PDF container instead of replacing the whole reading surface.
+- Selected text resolves to the actual rendered page, fixing the old fallback that could report page 7 for first-page text.
+- The AI Assist dock can be moved by dragging the header grip; the top handle still resizes height.
+- Assistant `assistantX` and `assistantY` are persisted through workspace settings with small localStorage fallback preferences.
+- Real smoke evidence is saved under `docs/qa/screenshots/continuous-movable-final-3/`.
+
+Latest verification:
+
+```bash
+npm run typecheck
+npm run test
+npm run build
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/continuous-movable-final-3 npm run smoke:real-pdf
+```
+
+All passed.

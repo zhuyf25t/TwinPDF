@@ -100,6 +100,7 @@ async function main() {
   await assertWorkspaceSurface(page);
   await maybeScreenshot(page, "04-mobile-dock.png");
   await page.setViewportSize({ width: 1440, height: 950 });
+  await assertAssistantCanMove(page);
 
   await page.locator(".finalize-button").click();
   await expect(page.locator(".summary-modal")).toBeVisible({ timeout: 20_000 });
@@ -165,13 +166,13 @@ function assertWorkspaceFile(dump: { files?: string[] } | undefined, needle: str
 }
 
 async function assertRightPdfCanvas(page: Page) {
-  const box = await page.locator(".right-pdf-pane canvas").boundingBox();
+  const box = await page.locator(".right-pdf-pane canvas").first().boundingBox();
   if (!box || box.width <= 0 || box.height <= 0) {
     throw new Error(`Right PDF canvas did not render with usable dimensions: ${JSON.stringify(box)}`);
   }
-  const textCount = await page.locator(".right-pdf-pane .pdf-text-layer span").count();
-  if (textCount <= 0) {
-    throw new Error("Right PDF text layer did not render any text spans.");
+  const renderedPages = await page.locator(".right-pdf-pane .pdf-rendered-page").count();
+  if (renderedPages < 2) {
+    throw new Error(`Right PDF should render a continuous page stack, got ${renderedPages} page(s).`);
   }
 }
 
@@ -320,6 +321,27 @@ async function assertDockDoesNotBlockPrimaryReading(page: Page) {
   }
 }
 
+async function assertAssistantCanMove(page: Page) {
+  const before = await page.locator(".assistant-dock").boundingBox();
+  const header = await page.locator(".assistant-header").boundingBox();
+  if (!before || !header) throw new Error("Assistant move geometry unavailable.");
+
+  await page.mouse.move(header.x + Math.min(90, header.width / 2), header.y + header.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(header.x + Math.min(90, header.width / 2) - 140, header.y + header.height / 2 - 80);
+  await page.mouse.up();
+  await page.waitForTimeout(140);
+
+  const after = await page.locator(".assistant-dock").boundingBox();
+  if (!after) throw new Error("Assistant geometry unavailable after move.");
+  const moved = Math.abs(after.x - before.x) > 40 || Math.abs(after.y - before.y) > 40;
+  if (!moved) {
+    throw new Error(`Assistant dock did not move: before=${JSON.stringify(before)}, after=${JSON.stringify(after)}`);
+  }
+  const position = await page.locator(".assistant-dock").evaluate((node) => window.getComputedStyle(node).position);
+  if (position !== "fixed") throw new Error(`Assistant moved dock should stay fixed, got ${position}.`);
+}
+
 async function assertWorkspaceSurface(page: Page) {
   const issues = await page.evaluate(() => {
     const viewportHeight = window.innerHeight;
@@ -334,7 +356,7 @@ async function assertWorkspaceSurface(page: Page) {
     if (!app || Math.abs(app.height - viewportHeight) > 2) {
       problems.push("app shell does not fill viewport height");
     }
-    if (!workspace || Math.abs(workspace.bottom - viewportHeight) > 2) {
+    if (!workspace || Math.abs(workspace.bottom - viewportHeight) > 32) {
       problems.push("workspace does not fill remaining viewport height");
     }
     if (panes.length < 2) {

@@ -40,10 +40,6 @@
     width: calc(100vw - 20px);
   }
 
-  .assistant-command-row {
-    grid-template-columns: 1fr auto;
-  }
-
   .ask-row {
     grid-template-columns: minmax(0, 1fr) 70px;
   }

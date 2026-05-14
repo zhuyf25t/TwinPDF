@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { requestAssist } from "../../lib/ai/client";
 import type { AppSettings, AssistMode, AssistantDockMode, SelectedContext, StudyLogEntry } from "../../shared/contracts";
 import { AiAnswerPanel } from "./AiAnswerPanel";
@@ -9,6 +9,8 @@ import { AssistantLocks } from "./AssistantLocks";
 import {
   assistantHeightStorageKey,
   assistantModeStorageKey,
+  assistantXStorageKey,
+  assistantYStorageKey,
   emptyAnswer,
   emptySelection,
   friendlyError,
@@ -48,6 +50,8 @@ export function AssistantDock({
   const [error, setError] = useState<string | null>(null);
   const [lastAddedFingerprint, setLastAddedFingerprint] = useState<string | null>(null);
   const dragState = useRef<{ startY: number; startHeight: number } | null>(null);
+  const moveState = useRef<{ startX: number; startY: number; dockX: number; dockY: number; width: number; height: number } | null>(null);
+  const dockRef = useRef<HTMLElement | null>(null);
   const questionRef = useRef(question);
   const editVersionRef = useRef(0);
 
@@ -89,6 +93,8 @@ export function AssistantDock({
     try {
       window.localStorage.setItem(assistantHeightStorageKey, String(nextHeight));
       window.localStorage.setItem(assistantModeStorageKey, nextMode);
+      if (typeof patch.assistantX === "number") window.localStorage.setItem(assistantXStorageKey, String(patch.assistantX));
+      if (typeof patch.assistantY === "number") window.localStorage.setItem(assistantYStorageKey, String(patch.assistantY));
     } catch {
       // Workspace settings remain the source of truth; localStorage is only a small fallback preference.
     }
@@ -253,6 +259,36 @@ export function AssistantDock({
     }
   }
 
+  function handleMovePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest("button")) return;
+    const box = dockRef.current?.getBoundingClientRect();
+    if (!box) return;
+    moveState.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      dockX: box.left,
+      dockY: box.top,
+      width: box.width,
+      height: box.height
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleMovePointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (!moveState.current) return;
+    const state = moveState.current;
+    const nextX = clamp(state.dockX + event.clientX - state.startX, 10, window.innerWidth - state.width - 10);
+    const nextY = clamp(state.dockY + event.clientY - state.startY, 10, window.innerHeight - state.height - 10);
+    patchSettings({ assistantX: nextX, assistantY: nextY });
+  }
+
+  function handleMovePointerEnd(event: PointerEvent<HTMLDivElement>) {
+    moveState.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
   function copyText(text: string) {
     if (!text.trim()) return;
     void navigator.clipboard.writeText(text);
@@ -260,9 +296,14 @@ export function AssistantDock({
 
   const selectedStatus = hasSelection ? `${selected.pageLabel || "当前页"} · 已选中` : "等待选中英文";
   const modeText = dockMode === "expanded" ? "紧凑" : "展开";
+  const hasCustomPosition = Number.isFinite(settings.assistantX) && Number.isFinite(settings.assistantY);
+  const dockStyle = {
+    height,
+    ...(hasCustomPosition ? { left: settings.assistantX, top: settings.assistantY, right: "auto", bottom: "auto" } : {})
+  } as CSSProperties;
 
   return (
-    <aside className={`assistant-dock dock-${dockMode}`} style={{ height }}>
+    <aside ref={dockRef} className={`assistant-dock dock-${dockMode}`} style={dockStyle}>
       <AssistantDockHandle
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -275,6 +316,10 @@ export function AssistantDock({
         modeText={modeText}
         onToggleSize={() => setDockMode(dockMode === "expanded" ? "compact" : "expanded")}
         onToggleCollapse={() => setDockMode(dockMode === "collapsed" ? "compact" : "collapsed")}
+        onMovePointerDown={handleMovePointerDown}
+        onMovePointerMove={handleMovePointerMove}
+        onMovePointerUp={handleMovePointerEnd}
+        onMovePointerCancel={handleMovePointerEnd}
       />
 
       {dockMode !== "collapsed" && (
@@ -317,4 +362,8 @@ export function AssistantDock({
       )}
     </aside>
   );
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
 }

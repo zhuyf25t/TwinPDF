@@ -61,11 +61,21 @@
   overflow: auto;
   display: flex;
   justify-content: center;
-  align-items: safe center;
+  align-items: flex-start;
   padding: 18px 16px 28px;
   background:
     linear-gradient(180deg, rgba(255, 253, 249, 0.48), rgba(242, 235, 225, 0.78)),
     #f0ebe3;
+}
+
+.pdf-page-stack {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  gap: 18px;
 }
 
 .pdf-body.no-thumbs .pdf-page-wrap {
@@ -78,6 +88,35 @@
   margin: 0 auto;
   background: var(--paper);
   box-shadow: 0 10px 24px rgba(63, 49, 33, 0.12);
+}
+
+.pdf-page-marker {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  min-width: 24px;
+  height: 20px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.82);
+  border: 1px solid rgba(226, 212, 195, 0.75);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 15px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.pdf-load-more {
+  width: min(320px, 80%);
+  margin: 2px auto 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  background: rgba(255, 253, 248, 0.72);
+  text-align: center;
+  font-size: 12px;
 }
 
 .pdf-rendered-page canvas {
