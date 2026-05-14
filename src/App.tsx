@@ -5,7 +5,7 @@ import { FinalSummaryModal } from "./components/summary/FinalSummaryModal";
 import { WorkspaceGate } from "./components/workspace/WorkspaceGate";
 import { requestAiHealth, requestFinalSummary, requestLabelPage, requestTermLabels } from "./lib/ai/client";
 import { buildFinalSummaryMarkdown, ensureFinalSummaryMarkdown } from "./lib/markdown";
-import { buildNearbyContext } from "./lib/pdf/sentence";
+import { buildNearbyContext, makePdfId } from "./lib/pdf/sentence";
 import { buildTermContext, extractTermsFromPdfIndex, getLocalTermLabel, labelArrayToMap, makeTermLabelIndex, mergeTermLabels, normalizeTermKey } from "./lib/pdf/terms";
 import {
   copyFileToWorkspace,
@@ -69,6 +69,7 @@ export default function App() {
   const [splitPercent, setSplitPercent] = useState(initialSplitPercent);
   const [isResizingSplit, setIsResizingSplit] = useState(false);
   const resizingSplitRef = useRef(false);
+  const pendingTermLabelRef = useRef(new Set<string>());
 
   const settings = workspaceData?.settings;
   const studyLog = workspaceData?.studyLog ?? [];
@@ -138,6 +139,7 @@ export default function App() {
   async function handlePdfFileLoaded(file: File) {
     if (!workspace) return;
     setStatus(`已导入 PDF：${file.name}，正在提取页面文本和句子...`);
+    setLeftPdfTermIndex(makeTermLabelIndex(makePdfId(file), file.name, []));
     await copyFileToWorkspace(workspace, file, `sources/${safeName(file.name)}`);
     setWorkspaceData((data) => data
       ? { ...data, settings: { ...data.settings, lastLeftPdfName: file.name } }
@@ -226,10 +228,11 @@ export default function App() {
 
   async function handleWordClick(payload: ClickedTermContext) {
     const key = normalizeTermKey(payload.term);
-    const label = key
-      ? labelArrayToMap(leftPdfTermIndex?.labels || []).get(key) || getLocalTermLabel(payload.term)
+    const cachedLabel = key
+      ? labelArrayToMap(leftPdfTermIndex?.labels || []).get(key)
       : undefined;
-    const termLabel: TermLabel = label || {
+    const localLabel = key ? getLocalTermLabel(payload.term) : undefined;
+    const termLabel: TermLabel = cachedLabel || localLabel || {
       term: payload.term,
       normalized: key,
       chinese: "标注中",
@@ -248,7 +251,8 @@ export default function App() {
       termLabel
     });
 
-    if (!workspace || !leftPdfTermIndex || label || !key) return;
+    if (!workspace || !leftPdfTermIndex || cachedLabel || !key || pendingTermLabelRef.current.has(key)) return;
+    pendingTermLabelRef.current.add(key);
     try {
       const result = await requestTermLabels({
         courseTitle,
@@ -272,6 +276,8 @@ export default function App() {
       await writeTermLabelCache(workspace, leftPdfTermIndex.pdfId, nextIndex);
     } catch (error) {
       setStatus(`词义补标暂时失败：${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      pendingTermLabelRef.current.delete(key);
     }
   }
 

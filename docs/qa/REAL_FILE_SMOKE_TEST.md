@@ -240,3 +240,33 @@ Additional checks added in this pass:
 - The app no longer reuses old mock term-label caches when the backend reports DeepSeek mode.
 - Real PDF smoke passed with a DeepSeek-generated label (`Lecture：讲座`).
 - The original lec8 folder was cleaned back to only the two source PDFs after testing.
+
+## Latest DeepSeek Miss Update Smoke
+
+Date: 2026-05-15
+
+Command:
+
+```bash
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/deepseek-miss-update-pass npm run smoke:real-pdf
+```
+
+Result:
+
+```json
+{
+  "ok": true,
+  "appUrl": "http://localhost:9999",
+  "leftPdf": "lec08-vm-malloc.pdf",
+  "rightPdf": "lec08_vm_malloc_super_detailed_guide.pdf",
+  "workspaceFiles": 10,
+  "selectedText": "Lecture：讲座",
+  "assistant": "selection-only"
+}
+```
+
+Additional checks added in this pass:
+
+- A local fallback label no longer counts as a cache hit.
+- Any clicked term missing from the persistent term-label cache triggers a one-term DeepSeek update.
+- DeepSeek results overwrite the temporary/local display and are written back to `cache/term-labels/`.
