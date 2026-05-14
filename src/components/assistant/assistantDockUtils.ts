@@ -39,15 +39,27 @@ export function makeQuestion(mode: AssistMode, question: string) {
   return question.trim() || defaultQuestionForMode(mode);
 }
 
+export const assistantHeightStorageKey = "twinpdf.assistant.height";
+export const assistantModeStorageKey = "twinpdf.assistant.mode";
+export const assistantMinHeight = 56;
+export const assistantDefaultHeight = 300;
+export const assistantCompactMinHeight = 260;
+export const assistantCompactMaxHeight = 320;
+
 export function clampDockHeight(height: number) {
-  const viewportMax = typeof window === "undefined" ? 540 : Math.floor(window.innerHeight * 0.55);
-  return Math.max(260, Math.min(viewportMax, Number.isFinite(height) ? height : 316));
+  const viewportMax = typeof window === "undefined"
+    ? 560
+    : Math.min(560, Math.floor(window.innerHeight * 0.55));
+  return Math.max(assistantMinHeight, Math.min(viewportMax, Number.isFinite(height) ? height : assistantDefaultHeight));
 }
 
 export function heightForDockMode(height: number, dockMode: AssistantDockMode) {
-  if (dockMode === "collapsed") return 48;
+  if (dockMode === "collapsed") return 52;
   if (dockMode === "expanded") return Math.max(340, clampDockHeight(height));
-  return Math.min(320, Math.max(260, Number.isFinite(height) ? height : 316));
+  return Math.min(
+    assistantCompactMaxHeight,
+    Math.max(assistantCompactMinHeight, Number.isFinite(height) ? height : assistantDefaultHeight)
+  );
 }
 
 export function friendlyError(error: unknown, action: string) {

@@ -81,3 +81,29 @@ Yes. It stays focused on PDF, handout, assistant, and summary. No dashboard, acc
 Would I open this every day?
 
 Yes, in mock mode for development and with a real DeepSeek key for normal use. Remaining limitations are bounded and documented.
+
+## Round 4 Review
+
+Can I continuously read for two hours without friction?
+
+Yes. The reading panes now keep their full viewport height and the assistant is a fixed bottom dock. It can cover the lower part of the page when open, but it no longer squeezes the documents; collapse mode leaves a slim 52px bar.
+
+Does AI Assist feel like a随堂助手 rather than a blocking form?
+
+Yes. The panel is now a docked workbench with a drag handle, compact/expanded/collapsed states, and a clearer separation between selected text, browser translation, answer, and input.
+
+Can I get browser-translatable selected text immediately?
+
+Yes. Smoke verifies the selected text updates and the browser translation surface is ordinary HTML with `lang="en"` and `translate="yes"`.
+
+Does the layout serve left-English, right-Chinese, bottom-TA?
+
+Yes. The mental model is now literal: left English PDF, right Chinese handout, fixed bottom AI Assist. The workspace height remains unchanged during drag and collapse.
+
+Is the right handout readable?
+
+Much better. Imported PDF handouts are cleaned before rendering, with page sections, merged fragments, and noise filtering instead of raw extraction garbage.
+
+Would I open this every day?
+
+Yes. This is now the correct product architecture for continued polish: the remaining work is incremental quality, not another layout rewrite.

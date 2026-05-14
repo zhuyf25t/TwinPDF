@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AssistantDock } from "./components/assistant/AssistantDock";
 import { HandoutPane } from "./components/handout/HandoutPane";
 import { PdfPane } from "./components/pdf/PdfPane";
@@ -34,15 +34,6 @@ const initialSelection: SelectedContext = {
   pageText: "",
   source: "unknown"
 };
-
-function getAssistantReservedHeight(settings: AppSettings) {
-  const mode = settings.assistantMode ?? "compact";
-  if (mode === "collapsed") return 58;
-
-  const rawHeight = Number.isFinite(settings.assistantHeight) ? settings.assistantHeight : 316;
-  if (mode === "expanded") return Math.min(Math.max(rawHeight, 340), 520) + 20;
-  return Math.min(Math.max(rawHeight, 260), 320) + 18;
-}
 
 export default function App() {
   const [workspace, setWorkspace] = useState<WorkspaceRef | null>(null);
@@ -205,12 +196,8 @@ export default function App() {
     return <WorkspaceGate onWorkspaceReady={(next) => void openWorkspace(next)} />;
   }
 
-  const shellStyle = {
-    "--assistant-reserved-height": `${getAssistantReservedHeight(settings)}px`
-  } as CSSProperties;
-
   return (
-    <div className="app-shell" style={shellStyle}>
+    <div className="app-shell">
       <header className="app-header">
         <div className="brand">
           <span className="brand-mark">T</span>
@@ -240,18 +227,16 @@ export default function App() {
         />
       </main>
 
-      <div className="assistant-stage">
-        <AssistantDock
-          courseTitle={courseTitle}
-          workspaceName={workspace.name}
-          selected={normalizedSelected}
-          rightNoteContext={handoutMarkdown}
-          recentEntries={studyLog}
-          settings={settings}
-          onSettingsChange={updateSettings}
-          onAddEntry={addStudyLogEntry}
-        />
-      </div>
+      <AssistantDock
+        courseTitle={courseTitle}
+        workspaceName={workspace.name}
+        selected={normalizedSelected}
+        rightNoteContext={handoutMarkdown}
+        recentEntries={studyLog}
+        settings={settings}
+        onSettingsChange={updateSettings}
+        onAddEntry={addStudyLogEntry}
+      />
 
       <FinalSummaryModal
         open={summaryOpen}

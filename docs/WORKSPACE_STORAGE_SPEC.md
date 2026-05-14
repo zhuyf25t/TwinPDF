@@ -62,7 +62,7 @@ Not allowed:
 
 ```json
 {
-  "assistantHeight": 316,
+  "assistantHeight": 300,
   "assistantMode": "compact",
   "inputLocked": false,
   "autoAddLocked": false,

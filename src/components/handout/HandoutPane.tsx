@@ -1,4 +1,5 @@
-import { renderSimpleMarkdown } from "../../lib/markdown";
+import { HandoutToolbar } from "./HandoutToolbar";
+import { MarkdownHandout } from "./MarkdownHandout";
 
 type HandoutPaneProps = {
   markdown: string;
@@ -8,34 +9,15 @@ type HandoutPaneProps = {
 };
 
 export function HandoutPane({ markdown, fileName, onChange, onOpenFile }: HandoutPaneProps) {
-  const html = renderSimpleMarkdown(markdown);
-
   return (
     <section className="pane handout-pane">
-      <div className="pane-toolbar">
-        <div className="toolbar-group toolbar-left">
-          <strong>中文讲义</strong>
-          <label className="toolbar-button">
-            打开讲义
-            <input
-              type="file"
-              accept=".md,.txt,.pdf,text/markdown,text/plain,application/pdf"
-              hidden
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) onOpenFile(file);
-                event.currentTarget.value = "";
-              }}
-            />
-          </label>
-          {fileName && <span className="handout-file-name" title={fileName}>{fileName}</span>}
-        </div>
-        <div className="toolbar-group toolbar-right">
-          <button className="toolbar-button small" onClick={() => navigator.clipboard.writeText(markdown)}>复制讲义</button>
-        </div>
-      </div>
+      <HandoutToolbar
+        fileName={fileName}
+        onOpenFile={onOpenFile}
+        onCopy={() => navigator.clipboard.writeText(markdown)}
+      />
       <div className="handout-split">
-        <article className="handout-content" dangerouslySetInnerHTML={{ __html: html }} />
+        <MarkdownHandout markdown={markdown} />
         <details className="handout-editor">
           <summary>编辑 Markdown</summary>
           <textarea value={markdown} onChange={(event) => onChange(event.target.value)} />

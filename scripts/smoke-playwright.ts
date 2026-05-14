@@ -50,6 +50,7 @@ async function main() {
 
   await expect(page.locator(".translation-surface")).toContainText(selectedText.trim().slice(0, 12));
   await assertDockGeometry(page);
+  await assertWorkspaceSurface(page);
   await assertAssistantLayout(page);
   const translationAttrs = await page.locator(".translation-surface").evaluate((node) => ({
     lang: node.getAttribute("lang"),
@@ -67,6 +68,7 @@ async function main() {
   await expect(page.locator(".answer-text")).toContainText("这段原文", { timeout: 30_000 });
   await expect(questionBox).toHaveValue("");
   await assertDockGeometry(page);
+  await assertWorkspaceSurface(page);
   await assertAssistantLayout(page);
   await maybeScreenshot(page, "03-after-answer.png");
 
@@ -82,6 +84,7 @@ async function main() {
 
   await page.setViewportSize({ width: 390, height: 780 });
   await assertDockGeometry(page, { mobile: true });
+  await assertWorkspaceSurface(page);
   await assertAssistantLayout(page);
   await maybeScreenshot(page, "04-mobile-dock.png");
   await page.setViewportSize({ width: 1440, height: 950 });
@@ -153,13 +156,17 @@ async function assertDockGeometry(page: Page, options: { mobile?: boolean } = {}
   const box = await page.locator(".assistant-dock").boundingBox();
   const viewport = page.viewportSize();
   if (!box || !viewport) throw new Error("Assistant dock geometry unavailable.");
+  const position = await page.locator(".assistant-dock").evaluate((node) => window.getComputedStyle(node).position);
+  if (position !== "fixed") {
+    throw new Error(`Assistant dock must be fixed overlay, got ${position}.`);
+  }
   const right = box.x + box.width;
   const bottom = box.y + box.height;
   if (box.x < -1 || box.y < -1 || right > viewport.width + 1 || bottom > viewport.height + 1) {
     throw new Error(`Assistant dock is outside viewport: ${JSON.stringify({ box, viewport })}`);
   }
   const bottomGap = viewport.height - bottom;
-  const expectedGap = 10;
+  const expectedGap = options.mobile ? 12 : 18;
   if (Math.abs(bottomGap - expectedGap) > 4) {
     throw new Error(`Assistant dock bottom gap out of target range: ${bottomGap}px`);
   }
@@ -181,10 +188,13 @@ async function assertDockGeometry(page: Page, options: { mobile?: boolean } = {}
 
 async function exerciseDockModes(page: Page) {
   const compactBox = await page.locator(".assistant-dock").boundingBox();
+  const workspaceBox = await page.locator(".workspace").boundingBox();
   if (!compactBox) throw new Error("Missing compact dock.");
+  if (!workspaceBox) throw new Error("Missing workspace.");
 
   await page.locator(".dock-toggle-button").click();
   await page.waitForTimeout(120);
+  await assertWorkspaceHeightStable(page, workspaceBox.height);
   const expandedBox = await page.locator(".assistant-dock").boundingBox();
   if (!expandedBox || expandedBox.height < compactBox.height + 60) {
     throw new Error("Expanded assistant dock did not grow enough.");
@@ -194,16 +204,22 @@ async function exerciseDockModes(page: Page) {
 
   const handleBox = await page.locator(".dock-resize-handle").boundingBox();
   if (!handleBox) throw new Error("Missing assistant resize handle.");
+  const handleCursor = await page.locator(".dock-resize-handle").evaluate((node) => window.getComputedStyle(node).cursor);
+  if (handleCursor !== "ns-resize") {
+    throw new Error(`Assistant resize handle cursor should be ns-resize, got ${handleCursor}.`);
+  }
   await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
   await page.mouse.down();
   await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y - 55);
   await page.mouse.up();
   await page.waitForTimeout(120);
   await assertDockGeometry(page);
+  await assertWorkspaceHeightStable(page, workspaceBox.height);
 
   await page.locator(".dock-toggle-button").click();
   await page.waitForTimeout(120);
   await assertDockGeometry(page);
+  await assertWorkspaceHeightStable(page, workspaceBox.height);
   await assertAssistantLayout(page);
 
   await page.locator(".dock-icon-button").click();
@@ -212,11 +228,57 @@ async function exerciseDockModes(page: Page) {
   if (!collapsedBox || collapsedBox.height > 60) {
     throw new Error(`Collapsed assistant dock is too tall: ${collapsedBox?.height}`);
   }
+  await assertWorkspaceHeightStable(page, workspaceBox.height);
 
   await page.locator(".dock-icon-button").click();
   await page.waitForTimeout(120);
   await assertDockGeometry(page);
+  await assertWorkspaceHeightStable(page, workspaceBox.height);
   await assertAssistantLayout(page);
+}
+
+async function assertWorkspaceHeightStable(page: Page, expectedHeight: number) {
+  const box = await page.locator(".workspace").boundingBox();
+  if (!box) throw new Error("Workspace geometry unavailable.");
+  if (Math.abs(box.height - expectedHeight) > 2) {
+    throw new Error(`Workspace height changed when assistant moved: before=${expectedHeight}, after=${box.height}`);
+  }
+}
+
+async function assertWorkspaceSurface(page: Page) {
+  const issues = await page.evaluate(() => {
+    const viewportHeight = window.innerHeight;
+    const app = document.querySelector(".app-shell")?.getBoundingClientRect();
+    const workspace = document.querySelector(".workspace")?.getBoundingClientRect();
+    const panes = [...document.querySelectorAll(".pane")].map((node) => node.getBoundingClientRect());
+    const problems: string[] = [];
+
+    if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 2) {
+      problems.push("document has horizontal scroll");
+    }
+    if (!app || Math.abs(app.height - viewportHeight) > 2) {
+      problems.push("app shell does not fill viewport height");
+    }
+    if (!workspace || Math.abs(workspace.bottom - viewportHeight) > 2) {
+      problems.push("workspace does not fill remaining viewport height");
+    }
+    if (panes.length < 2) {
+      problems.push("missing left/right panes");
+    }
+    if (workspace && window.innerWidth > 1119 && panes.length >= 2) {
+      const workspaceStyle = window.getComputedStyle(document.querySelector(".workspace") as Element);
+      const verticalPadding = parseFloat(workspaceStyle.paddingTop) + parseFloat(workspaceStyle.paddingBottom);
+      const expectedPaneHeight = workspace.height - verticalPadding;
+      if (panes.some((pane) => Math.abs(pane.height - expectedPaneHeight) > 4)) {
+        problems.push("pane height is not aligned with workspace");
+      }
+    }
+    return problems;
+  });
+
+  if (issues.length) {
+    throw new Error(`Workspace layout issues: ${issues.join("; ")}`);
+  }
 }
 
 async function assertAssistantLayout(page: Page) {

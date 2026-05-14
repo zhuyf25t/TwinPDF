@@ -11,7 +11,7 @@ TwinPDF now satisfies the repository `/goal` standard as a practical personal bi
 - right side loads Markdown/text handouts and can import the second user PDF as a Markdown-like handout;
 - the UI now follows the warm ivory symmetric reading-craft direction rather than the earlier blue/white demo style;
 - the desktop workspace uses two stable independently scrolling reading panes with compact headers and ellipsized long file names;
-- bottom AI Assist now lives in the AppShell bottom layout instead of floating over the documents;
+- bottom AI Assist is now a fixed dock overlay instead of a normal page block, so it no longer compresses the reading panes;
 - bottom AI Assist is visible, collapsible, resizable, has persisted `collapsed` / `compact` / `expanded` state, is Chinese-first, warm-styled, and centered on selected text;
 - selected text updates the raw text zone and ordinary browser-translation HTML zone immediately;
 - AI Assist uses selected text, page context, right-handout context, recent entries, and sentence labels;
@@ -36,7 +36,7 @@ npm run smoke:real-pdf
 Additional UI smoke command used for final screenshot verification:
 
 ```bash
-SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/round-3-final3 npm run smoke:real-pdf
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/round-fixed-overlay npm run smoke:real-pdf
 ```
 
 Product QA evidence:
@@ -45,11 +45,14 @@ Product QA evidence:
 docs/qa/UI_AUDIT_ROUND_1.md
 docs/qa/UI_AUDIT_ROUND_2.md
 docs/qa/UI_AUDIT_ROUND_3.md
+docs/qa/UI_AUDIT_ROUND_4.md
 docs/qa/FIXES_ROUND_1.md
 docs/qa/FIXES_ROUND_2.md
 docs/qa/FIXES_ROUND_3.md
+docs/qa/FIXES_ROUND_4.md
 docs/qa/PRODUCT_SELF_REVIEW.md
 docs/qa/PRODUCT_SCORE.md
+docs/qa/ASSISTANT_DOCK_DRAG_TEST.md
 docs/qa/REAL_FILE_SMOKE_TEST.md
 docs/qa/FINAL_QA_SIGNOFF.md
 ```
@@ -86,7 +89,7 @@ Browser smoke with `npm run smoke:real-pdf` verified:
 - right PDF handout loading through PDF-to-Markdown extraction;
 - selected text capture from rendered PDF;
 - warm symmetric two-pane layout without overflow;
-- bottom AI Assist dock width, height, bottom gap, containment, and internal non-overlap;
+- fixed bottom AI Assist dock width, height, bottom gap, containment, internal non-overlap, and unchanged workspace height during drag/collapse;
 - assistant expanded, compact, collapsed, and drag-resize behavior;
 - mobile dock layout with visible selected text, browser translation, AI answer, locks, and send action;
 - browser translation surface uses `lang="en"` and `translate="yes"`;

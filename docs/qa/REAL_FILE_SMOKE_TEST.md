@@ -5,7 +5,7 @@ Date: 2026-05-14
 ## Command
 
 ```bash
-SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/round-3-final3 npm run smoke:real-pdf
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/round-fixed-overlay npm run smoke:real-pdf
 ```
 
 ## Test Files
@@ -29,7 +29,7 @@ Smoke JSON:
   "appUrl": "http://localhost:9999",
   "leftPdf": "lec08-vm-malloc.pdf",
   "rightPdf": "lec08_vm_malloc_super_detailed_guide.pdf",
-  "workspaceFiles": 59,
+  "workspaceFiles": 56,
   "selectedText": "Lecture 8 Virtual Memory & Memory Management Mingyu Gao gaomy@tsinghua.edu.cn"
 }
 ```
@@ -43,7 +43,9 @@ Smoke JSON:
 - Sentence cache and page-label cache files are written in the workspace stub.
 - Selecting real PDF text updates `已选原文`.
 - Browser translation surface is ordinary HTML with `lang="en"` and `translate="yes"`.
-- Assistant compact, expanded, collapsed, and drag-resize states are exercised.
+- Assistant fixed overlay positioning, compact, expanded, collapsed, and drag-resize states are exercised.
+- Workspace height is checked to remain stable while the assistant expands, collapses, and is dragged.
+- The page has no horizontal document scroll.
 - Mock AI answer returns through the backend route.
 - Manual add and auto-add lock save entries.
 - Green `加入成功` appears.
@@ -55,9 +57,11 @@ Smoke JSON:
 - `docs/qa/screenshots/round-1.png`
 - `docs/qa/screenshots/round-2.png`
 - `docs/qa/screenshots/round-3.png`
-- `docs/qa/screenshots/round-3-final3/03-after-answer.png`
-- `docs/qa/screenshots/round-3-final3/04-mobile-dock.png`
-- `docs/qa/screenshots/round-3-final3/05-summary-modal.png`
+- `docs/qa/screenshots/round-4.png`
+- `docs/qa/screenshots/final.png`
+- `docs/qa/screenshots/round-fixed-overlay/03-after-answer.png`
+- `docs/qa/screenshots/round-fixed-overlay/04-mobile-dock.png`
+- `docs/qa/screenshots/round-fixed-overlay/05-summary-modal.png`
 
 ## Limitation
 

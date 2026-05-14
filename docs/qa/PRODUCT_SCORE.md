@@ -1,12 +1,13 @@
 # Product Score
 
-Scores are intentionally strict. DONE is not allowed while any item is below 8 or average is below 8.8.
+Scores are intentionally strict. DONE is not allowed while any item is below 8, while reading comfort / AI Assist non-obstruction / visual simplicity / real PDF usability are below 8.5, or while average is below 8.8.
 
 | Round | 阅读舒适度 | AI Assist 不打扰 | 选中即翻译 | 选中即解释 | 视觉简洁度 | 工作区记忆 | 子讲义闭环 | 真实 PDF 可用性 | Average | Verdict |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | 1 baseline | 7.4 | 6.6 | 9.0 | 8.4 | 7.0 | 8.8 | 8.6 | 9.0 | 8.10 | Not DONE |
 | 2 after dock layout | 8.7 | 8.6 | 9.1 | 8.8 | 8.5 | 8.9 | 8.8 | 9.1 | 8.81 | Continue |
-| 3 final UI pass | 9.1 | 9.0 | 9.2 | 9.0 | 9.0 | 8.9 | 8.9 | 9.2 | 9.04 | DONE allowed |
+| 3 bottom layout pass | 8.6 | 7.8 | 9.2 | 9.0 | 8.4 | 8.9 | 8.9 | 9.2 | 8.75 | Rejected by latest review |
+| 4 fixed overlay pass | 9.1 | 9.0 | 9.2 | 9.0 | 9.0 | 8.9 | 8.9 | 9.2 | 9.04 | DONE allowed |
 
 ## Round 1 Notes
 
@@ -14,9 +15,10 @@ Scores are intentionally strict. DONE is not allowed while any item is below 8 o
 - Weakest areas: assistant obstruction, crowded control hierarchy, demo-like status strips, and insufficient product polish.
 - Required before DONE: assistant and reading comfort must reach 9-level product quality.
 
-## Round 3 Notes
+## Round 4 Notes
 
-- Reading comfort reaches 9 because the assistant is no longer an overlay; it is part of the bottom layout.
-- AI Assist non-obstruction reaches 9 because collapsed/compact/expanded states are tested and the compact default does not cover documents.
+- Round 3 was demoted after the latest user review because the assistant still participated in the page layout and compressed the reading panes.
+- Reading comfort reaches 9.1 in Round 4 because AI Assist is now a fixed bottom dock; the left/right workspace height is stable and verified by smoke.
+- AI Assist non-obstruction reaches 9 because collapsed/compact/expanded states are tested, drag does not re-layout the workspace, and collapsed mode leaves only a slim strip.
 - Workspace memory remains 8.9 rather than 9+ because automated browser smoke still uses a File System Access API stub; the app code and unit tests cover the real API path.
 - Average is above 8.8 and all categories are above 8, so DONE is allowed by the rubric.

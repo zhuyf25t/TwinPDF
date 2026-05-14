@@ -58,3 +58,11 @@ Next Codex run must execute `docs/CODEX_GOAL_PROMPT.md`, install deps, run typec
 - Round 3 tightened compact mode, added dock-mode smoke coverage for expand/drag/collapse, and confirmed the assistant supports the documents without covering them.
 - Final product score: 9.04 average, all categories >= 8, with reading comfort and AI Assist non-obstruction at 9+.
 - Final verification passed: `npm run typecheck`, `npm run test`, `npm run build`, and `SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/round-3-final3 npm run smoke:real-pdf`.
+
+## Fixed overlay correction - 2026-05-14
+- Reproduced the rejected UI with the two real lec8 PDFs and saved `docs/qa/screenshots/before-current-broken.png`.
+- Wrote `docs/qa/CURRENT_BROKEN_UI_AUDIT.md`, explicitly marking the prior assistant layout as a failure because it compressed the reading workspace.
+- Removed `assistant-stage` from the app flow and changed AI Assist into a true `position: fixed` bottom dock.
+- Split assistant and handout UI into smaller components and added PDF handout cleanup so the right pane reads more like a lecture note.
+- Hardened smoke coverage to assert fixed positioning, `ns-resize` drag handle, no horizontal document scroll, unchanged workspace height during drag/collapse, and collapsed height under 60px.
+- Real PDF smoke passed with `SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/round-fixed-overlay npm run smoke:real-pdf`.

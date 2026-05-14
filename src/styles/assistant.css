@@ -1,33 +1,24 @@
-.assistant-stage {
-  flex: 0 0 var(--assistant-reserved-height, 326px);
-  min-height: var(--assistant-reserved-height, 326px);
-  position: relative;
-  background:
-    linear-gradient(180deg, rgba(251, 248, 242, 0), rgba(251, 248, 242, 0.96) 26%),
-    var(--background);
-  pointer-events: none;
-}
-
 .assistant-dock {
-  position: absolute;
-  left: 56%;
-  bottom: 10px;
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
   transform: translateX(-50%);
-  width: clamp(760px, 66vw, 960px);
+  width: min(980px, 72vw);
   max-width: calc(100vw - 28px);
   display: flex;
   flex-direction: column;
   background: rgba(255, 253, 248, 0.99);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  box-shadow: 0 14px 34px rgba(70, 50, 28, 0.14);
+  box-shadow: var(--shadow-float);
   overflow: hidden;
   pointer-events: auto;
+  z-index: 50;
   transition: height 0.14s ease, width 0.14s ease, transform 0.14s ease;
 }
 
 .dock-collapsed {
-  width: clamp(640px, 54vw, 820px);
+  width: min(760px, 62vw);
 }
 
 .dock-collapsed .dock-resize-handle {
@@ -270,6 +261,10 @@
 
 .translation-surface {
   background: var(--paper);
+}
+
+.translation-surface p {
+  margin: 0;
 }
 
 .answer-text {

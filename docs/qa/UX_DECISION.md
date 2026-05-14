@@ -29,7 +29,8 @@ TwinPDF is not a SaaS dashboard or a general PDF suite. The final product shape 
 
 ## Final Polish Direction
 
-- The assistant belongs to the AppShell bottom layout, not as a fixed overlay over reading content.
+- The assistant belongs to a fixed bottom dock overlay, not the normal workspace document flow.
+- The fixed dock must never compress the left/right reading panes; users can collapse it to a 52px strip when they want uninterrupted reading.
 - Assistant states are explicit: collapsed, compact, expanded.
 - The command strip should keep mode, locks, save, and success state visible without turning the dock into a form pile.
 - The reading panes stay primary; AI Assist should support the study surface, not compete with it.

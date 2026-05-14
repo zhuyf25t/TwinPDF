@@ -4,7 +4,7 @@ Screenshot: `docs/qa/screenshots/round-3.png`
 
 ## Verdict
 
-Round 3 reaches the intended TwinPDF shape: a warm, symmetric study workspace with a bottom随堂助手 that supports reading rather than covering it.
+Round 3 was later rejected by the user because the assistant still participated in normal page layout and compressed the reading panes. Keep this file as historical evidence; Round 4 is the corrected fixed-overlay pass.
 
 ## What Now Works
 
