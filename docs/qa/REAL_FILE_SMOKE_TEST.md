@@ -197,3 +197,46 @@ Additional checks added in this pass:
 - The center divider is visible, has `col-resize`, and can be dragged horizontally.
 - Dragging the divider changes the left/right pane widths without changing workspace height.
 - Latest screenshots are in `docs/qa/screenshots/resizable-reader-pass/`.
+
+## Latest DeepSeek Term Label Smoke
+
+Date: 2026-05-15
+
+Command:
+
+```bash
+SMOKE_SCREENSHOT_DIR=docs/qa/screenshots/deepseek-term-label-pass npm run smoke:real-pdf
+```
+
+AI mode:
+
+```json
+{
+  "mockAI": false,
+  "model": "deepseek-v4-pro",
+  "reasoning": true
+}
+```
+
+Result:
+
+```json
+{
+  "ok": true,
+  "appUrl": "http://localhost:9999",
+  "leftPdf": "lec08-vm-malloc.pdf",
+  "rightPdf": "lec08_vm_malloc_super_detailed_guide.pdf",
+  "workspaceFiles": 10,
+  "selectedText": "Lecture：讲座",
+  "assistant": "selection-only"
+}
+```
+
+Additional checks added in this pass:
+
+- `env.local` was switched to `MOCK_AI=false` locally; this file is not committed.
+- `/api/ai/health` reported DeepSeek mode with `deepseek-v4-pro` and reasoning enabled.
+- A direct `/api/ai/label-terms` request returned `mock:false` and `source:"deepseek"` labels.
+- The app no longer reuses old mock term-label caches when the backend reports DeepSeek mode.
+- Real PDF smoke passed with a DeepSeek-generated label (`Lecture：讲座`).
+- The original lec8 folder was cleaned back to only the two source PDFs after testing.

@@ -5,6 +5,7 @@ import { buildAssistMessages, buildFinalizeMessages, buildLabelPageMessages } fr
 import { buildTermLabelMessages } from "../prompts/termLabels";
 import { buildFinalSummaryMarkdown } from "../../src/lib/markdown";
 import type {
+  AiHealthResponse,
   AssistRequest,
   AssistResponse,
   FinalizeRequest,
@@ -25,7 +26,13 @@ const MAX_TERM_LABELS = 260;
 
 aiRouter.get("/health", (_req, res) => {
   const config = aiConfig();
-  res.json({ ok: true, mockAI: config.mock, model: config.mock ? "mock" : config.model });
+  res.json({
+    ok: true,
+    mockAI: config.mock,
+    model: config.mock ? "mock" : config.model,
+    hasKey: config.hasKey,
+    reasoning: config.reasoning
+  } satisfies AiHealthResponse);
 });
 
 aiRouter.post("/assist", async (req, res) => {

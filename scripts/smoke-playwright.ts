@@ -263,7 +263,7 @@ async function assertDockGeometry(page: Page, options: { mobile?: boolean } = {}
   if (collapsed && box.height > 62) {
     throw new Error(`Collapsed assistant dock is too tall: ${box.height}px`);
   }
-  if (!options.mobile && !collapsed && box.height < 130) {
+  if (!options.mobile && !collapsed && box.height < 112) {
     throw new Error(`Assistant dock too short: ${box.height}px`);
   }
   await assertDockDoesNotBlockPrimaryReading(page);

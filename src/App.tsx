@@ -3,7 +3,7 @@ import { AssistantDock } from "./components/assistant/AssistantDock";
 import { PdfPane } from "./components/pdf/PdfPane";
 import { FinalSummaryModal } from "./components/summary/FinalSummaryModal";
 import { WorkspaceGate } from "./components/workspace/WorkspaceGate";
-import { requestFinalSummary, requestLabelPage, requestTermLabels } from "./lib/ai/client";
+import { requestAiHealth, requestFinalSummary, requestLabelPage, requestTermLabels } from "./lib/ai/client";
 import { buildFinalSummaryMarkdown, ensureFinalSummaryMarkdown } from "./lib/markdown";
 import { buildNearbyContext } from "./lib/pdf/sentence";
 import { buildTermContext, extractTermsFromPdfIndex, labelArrayToMap, makeTermLabelIndex, mergeTermLabels, normalizeTermKey } from "./lib/pdf/terms";
@@ -39,6 +39,9 @@ const initialSelection: SelectedContext = {
 };
 
 const splitStorageKey = "twinpdf.workspace.split";
+const mockTermLabelBatchSize = 220;
+const deepSeekFirstTermBatchSize = 2;
+const deepSeekTermLabelBatchSize = 8;
 
 function clampSplitPercent(value: number) {
   return Math.max(28, Math.min(72, value));
@@ -172,21 +175,30 @@ export default function App() {
 
   async function ensureTermLabels(index: PdfSentenceIndex) {
     if (!workspace) return;
+    const aiHealth = await requestAiHealth().catch(() => null);
     const emptyIndex = makeTermLabelIndex(index.pdfId, index.pdfName, []);
     const cached = await readTermLabelCache<TermLabelIndex>(workspace, index.pdfId, emptyIndex);
-    if (cached.labels?.length) {
+    const canReuseCache = cached.labels?.length && isReusableTermLabelCache(cached, aiHealth);
+    if (canReuseCache) {
       setLeftPdfTermIndex(cached);
-      setStatus(`词义缓存已读取：${cached.labels.length} 个去重词。`);
+      setStatus(`词义缓存已读取：${cached.labels.length} 个去重词，来源 ${cached.model || "local"}。`);
       return;
+    }
+    if (cached.labels?.length && aiHealth?.mockAI === false) {
+      setStatus(`检测到旧 mock 词义缓存，当前为 ${aiHealth.model}，将重新生成真实 AI 词义。`);
     }
 
     const terms = extractTermsFromPdfIndex(index);
     const labels: TermLabel[] = [];
     const contextText = buildTermContext(index);
-    setStatus(`正在生成词义缓存：${terms.length} 个去重词。`);
+    setStatus(`正在生成词义缓存：${terms.length} 个去重词，模式 ${aiHealth?.mockAI === false ? aiHealth.model : "mock"}。`);
 
-    for (let start = 0; start < terms.length; start += 220) {
-      const chunk = terms.slice(start, start + 220);
+    let start = 0;
+    while (start < terms.length) {
+      const batchSize = aiHealth?.mockAI === false
+        ? start === 0 ? deepSeekFirstTermBatchSize : deepSeekTermLabelBatchSize
+        : mockTermLabelBatchSize;
+      const chunk = terms.slice(start, start + batchSize);
       const result = await requestTermLabels({
         courseTitle,
         pdfId: index.pdfId,
@@ -199,9 +211,17 @@ export default function App() {
       const partial = makeTermLabelIndex(index.pdfId, index.pdfName, labels, result.model);
       setLeftPdfTermIndex(partial);
       await writeTermLabelCache(workspace, index.pdfId, partial);
-      setStatus(`词义缓存生成中：${Math.min(start + chunk.length, terms.length)}/${terms.length} 个词。`);
+      start += chunk.length;
+      setStatus(`词义缓存生成中：${Math.min(start, terms.length)}/${terms.length} 个词，来源 ${result.model || "unknown"}。`);
       await new Promise((resolve) => window.setTimeout(resolve, 40));
     }
+  }
+
+  function isReusableTermLabelCache(cached: TermLabelIndex, aiHealth: Awaited<ReturnType<typeof requestAiHealth>> | null) {
+    if (!aiHealth) return true;
+    const containsMockLabels = cached.labels.some((label) => label.source === "mock");
+    if (aiHealth.mockAI) return cached.model === "mock" || containsMockLabels;
+    return cached.model === aiHealth.model && !containsMockLabels;
   }
 
   async function handleWordClick(payload: ClickedTermContext) {
@@ -243,6 +263,10 @@ export default function App() {
         updatedAt: new Date().toISOString()
       };
       setLeftPdfTermIndex(nextIndex);
+      const nextLabel = labelArrayToMap(nextIndex.labels).get(key);
+      if (nextLabel) {
+        setSelected((current) => current.clickedTerm === payload.term ? { ...current, termLabel: nextLabel } : current);
+      }
       await writeTermLabelCache(workspace, leftPdfTermIndex.pdfId, nextIndex);
     } catch (error) {
       setStatus(`词义补标暂时失败：${error instanceof Error ? error.message : String(error)}`);

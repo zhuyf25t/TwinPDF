@@ -140,6 +140,14 @@ export type TermLabelResponse = {
   error?: string;
 };
 
+export type AiHealthResponse = {
+  ok: boolean;
+  mockAI: boolean;
+  model: string;
+  hasKey?: boolean;
+  reasoning?: boolean;
+};
+
 export type SentenceLabel = {
   sentenceId: string;
   kind: "definition" | "formula" | "intuition" | "procedure" | "warning" | "example" | "other";

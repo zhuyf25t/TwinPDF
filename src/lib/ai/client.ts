@@ -1,4 +1,5 @@
 import type {
+  AiHealthResponse,
   AssistRequest,
   AssistResponse,
   FinalizeRequest,
@@ -8,6 +9,14 @@ import type {
   TermLabelRequest,
   TermLabelResponse
 } from "../../shared/contracts";
+
+export async function requestAiHealth() {
+  const response = await fetch("/api/ai/health");
+  const data = parseJson<AiHealthResponse & { error?: string }>(await response.text());
+  if (!response.ok) throw new Error(data?.error || "无法读取 AI 后端状态。");
+  if (!data) throw new Error("AI 后端状态为空。");
+  return data;
+}
 
 async function postJson<TResponse>(url: string, payload: unknown): Promise<TResponse> {
   let response: Response;
